@@ -1,0 +1,113 @@
+# Keyword dictionary for auto-tagging entries
+# Each entry maps a tag slug to terms that trigger it and metadata
+keywords:
+
+  # Locations
+  location-hawaii:
+    label: "Hawaii"
+    category: location
+    terms: ["hawaii", "maui", "oahu", "kauai", "big island", "waikiki", "aloha", "haleakala", "luau"]
+
+  location-colorado:
+    label: "Colorado"
+    category: location
+    terms: ["colorado", "denver", "boulder", "vail", "aspen", "breckenridge", "rocky mountain"]
+
+  location-florida:
+    label: "Florida"
+    category: location
+    terms: ["florida", "orlando", "miami", "disney world", "universal studios", "everglades", "key west"]
+
+  location-california:
+    label: "California"
+    category: location
+    terms: ["california", "los angeles", "san francisco", "san diego", "yosemite", "disneyland", "napa"]
+
+  location-national-parks:
+    label: "National Parks"
+    category: location
+    terms: ["national park", "yellowstone", "grand canyon", "zion", "arches", "glacier", "acadia", "smoky mountains"]
+
+  location-europe:
+    label: "Europe"
+    category: location
+    terms: ["europe", "paris", "london", "rome", "italy", "france", "spain", "germany", "amsterdam", "barcelona"]
+
+  location-caribbean:
+    label: "Caribbean"
+    category: location
+    terms: ["caribbean", "bahamas", "jamaica", "cancun", "cruise", "bahamas", "barbados", "turks and caicos"]
+
+  # Activities
+  activity-hiking:
+    label: "Hiking"
+    category: keyword
+    terms: ["hik", "trail", "backpack", "trek", "summit", "mountain", "peak", "climb"]
+
+  activity-camping:
+    label: "Camping"
+    category: keyword
+    terms: ["camp", "tent", "campfire", "campground", "rv", "glamping", "backcountry"]
+
+  activity-skiing:
+    label: "Skiing"
+    category: keyword
+    terms: ["ski", "snowboard", "slope", "powder", "chairlift", "après ski", "mogul"]
+
+  activity-beach:
+    label: "Beach"
+    category: keyword
+    terms: ["beach", "ocean", "sand", "surf", "snorkel", "dive", "scuba", "swimming", "waves"]
+
+  activity-cycling:
+    label: "Cycling"
+    category: keyword
+    terms: ["bike", "cycling", "bicycle", "pedal", "ride", "trail riding"]
+
+  activity-kayak:
+    label: "Kayaking & Paddling"
+    category: keyword
+    terms: ["kayak", "canoe", "paddle", "rafting", "whitewater", "paddleboard"]
+
+  activity-wildlife:
+    label: "Wildlife"
+    category: keyword
+    terms: ["wildlife", "animal", "bird", "whale", "dolphin", "bear", "elk", "deer", "eagle", "safari", "zoo"]
+
+  # Family events
+  family-holiday:
+    label: "Holidays"
+    category: keyword
+    terms: ["christmas", "thanksgiving", "easter", "halloween", "new year", "fourth of july", "holiday"]
+
+  family-birthday:
+    label: "Birthdays"
+    category: keyword
+    terms: ["birthday", "birth day", "turning", "years old", "cake", "party"]
+
+  family-school:
+    label: "School"
+    category: keyword
+    terms: ["school", "graduation", "kindergarten", "college", "university", "first day", "teacher"]
+
+  # Seasons / weather
+  weather-snow:
+    label: "Snow"
+    category: keyword
+    terms: ["snow", "blizzard", "snowman", "snowfall", "winter storm"]
+
+  # Transportation
+  travel-road-trip:
+    label: "Road Trip"
+    category: keyword
+    terms: ["road trip", "drive", "driving", "highway", "interstate", "pit stop"]
+
+  travel-flight:
+    label: "Flying"
+    category: keyword
+    terms: ["flight", "airplane", "airport", "flying", "plane", "jet", "takeoff", "landing"]
+
+  travel-cruise:
+    label: "Cruise"
+    category: keyword
+    terms: ["cruise", "ship", "port", "starboard", "deck", "sail", "sailing"]

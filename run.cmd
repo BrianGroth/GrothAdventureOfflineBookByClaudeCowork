@@ -1,0 +1,2 @@
+scrapbook status
+scrapbook serve

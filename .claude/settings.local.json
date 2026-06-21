@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-Command python3, py -ErrorAction SilentlyContinue)",
+      "PowerShell($env:PATH -split ';' | Where-Object { $_ -match 'python|conda|miniforge|anaconda' -and \\(Test-Path $_\\) })"
+    ]
+  }
+}

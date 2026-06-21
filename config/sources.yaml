@@ -1,0 +1,11 @@
+sources:
+  - name: grothadventures
+    type: wordpress
+    base_url: https://grothadventures.com
+    rate_limit_min: 1.5
+    rate_limit_max: 3.0
+    max_images_per_post: 20
+    save_raw_snapshots: true
+    user_agent: "GrothAdventuresScrapbookBot/1.0 (+personal archive tool; operated by groth.brian@gmail.com; respects robots.txt)"
+    # Optional: restrict to specific date range on first sync
+    # since: "2010-01-01"
