@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 
 from core.config import AppConfig
 from core.db.session import init_engine
-from core.api.routers import entries, media, search, tags, stats
+from core.api.routers import entries, media, search, tags, stats, book
 
 
 def create_app(cfg: AppConfig) -> FastAPI:
@@ -41,6 +41,7 @@ def create_app(cfg: AppConfig) -> FastAPI:
     app.include_router(search.router, prefix="/api")
     app.include_router(tags.router, prefix="/api")
     app.include_router(stats.router, prefix="/api")
+    app.include_router(book.router, prefix="/api")
 
     # Serve built React app if dist exists
     dist_dir = Path(__file__).parent.parent.parent / "app" / "dist"
@@ -55,7 +56,9 @@ def create_app(cfg: AppConfig) -> FastAPI:
                 raise HTTPException(status_code=404)
             index = dist_dir / "index.html"
             if index.exists():
-                return FileResponse(str(index))
+                # index.html must never be cached: built assets are hash-named,
+                # so a stale index would point at assets that no longer exist.
+                return FileResponse(str(index), headers={"Cache-Control": "no-cache"})
             return {"message": "Build the React app with: cd app && npm run build"}
     else:
         @app.get("/", include_in_schema=False)

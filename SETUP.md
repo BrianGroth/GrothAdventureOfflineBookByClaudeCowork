@@ -74,6 +74,34 @@ Then open http://localhost:5173 — the Vite dev server proxies `/api` to the Fa
 
 ---
 
+## The Book UI
+
+The app presents the blog as an offline book: a cover, a two-page spread per
+blog entry, and two tables of contents — **By Chapter** (curated topics) and
+**By Date** (chronological, with page numbers).
+
+Navigation on every page:
+- `←` / `→` (or the page-edge zones) — previous / next page by date
+- `[` / `]` (or the chapter bar below the book) — previous / next page in the same chapter
+- `C` or `Esc` — back to the table of contents
+- `/` or `Ctrl+K` — search the whole book
+- Your place is bookmarked automatically; the cover offers "Resume".
+
+### Chapter (topic) assignments
+
+Each entry belongs to one chapter, stored as `topic-*` tags
+(category `collection`) in the database. After syncing new posts, re-run:
+
+```powershell
+python scripts/assign_topics.py
+```
+
+It reports any new entries that still need a chapter; add them to
+`ASSIGNMENTS` in that script. Unassigned entries appear in a temporary
+"New Adventures" chapter so the book keeps working either way.
+
+---
+
 ## Monthly Update
 
 Run the monthly update script to pull new posts:

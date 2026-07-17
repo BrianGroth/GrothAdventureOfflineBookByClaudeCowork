@@ -1,32 +1,53 @@
-import { Routes, Route } from 'react-router-dom'
-import NavBar from './components/NavBar'
-import Home from './pages/Home'
-import Timeline from './pages/Timeline'
-import Entry from './pages/Entry'
-import Search from './pages/Search'
+import { useEffect, useState } from 'react'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { BookProvider } from './book/BookContext'
+import Cover from './pages/Cover'
+import Contents from './pages/Contents'
+import PageSpread from './pages/PageSpread'
+import SearchOverlay from './components/SearchOverlay'
 
 export default function App() {
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <NavBar />
-      <main style={{ flex: 1, paddingTop: 'var(--nav-height)' }}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/timeline" element={<Timeline />} />
-          <Route path="/entry/:id" element={<Entry />} />
-          <Route path="/search" element={<Search />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
-    </div>
-  )
-}
+  const [searchOpen, setSearchOpen] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
 
-function NotFound() {
+  // Global shortcuts: "/" or Ctrl/Cmd+K opens search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      const typing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'
+      if ((e.key === '/' && !typing) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
+  // Close search on route change
+  useEffect(() => setSearchOpen(false), [location.pathname])
+
   return (
-    <div className="empty-state" style={{ paddingTop: '6rem' }}>
-      <h2>Page Not Found</h2>
-      <p>The page you were looking for doesn't exist.</p>
-    </div>
+    <BookProvider>
+      <div className="desk">
+        <Routes>
+          <Route path="/" element={<Cover />} />
+          <Route path="/contents" element={<Contents onSearch={() => setSearchOpen(true)} />} />
+          <Route path="/page/:id" element={<PageSpread onSearch={() => setSearchOpen(true)} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+
+        {searchOpen && (
+          <SearchOverlay
+            onClose={() => setSearchOpen(false)}
+            onPick={(id) => {
+              setSearchOpen(false)
+              navigate(`/page/${id}`)
+            }}
+          />
+        )}
+      </div>
+    </BookProvider>
   )
 }
