@@ -15,33 +15,94 @@ The book has two tables of contents:
 
 ## Quick start (first time on a new machine)
 
-You need **Python 3.12+** and **Node.js 18+**.
+> **Already set up?** If this folder is already on your PC and you've done these steps
+> before (e.g. the machine you originally built it on), skip straight to
+> [Everyday use](#everyday-use).
+
+### Step 0 — Get this project onto your PC
+
+All the commands below are run from **inside the project folder**, so first you need
+the folder itself. Two ways to get it:
+
+- **Git** (recommended, makes updating easy):
+  ```powershell
+  git clone https://github.com/BrianGroth/GrothAdventureOfflineBookByClaudeCowork.git
+  cd GrothAdventureOfflineBookByClaudeCowork
+  ```
+- **No git:** on the GitHub page click the green **Code** button → **Download ZIP**,
+  unzip it somewhere (e.g. `Documents`), and open the unzipped folder.
+
+Then open a **PowerShell window in that folder**: in File Explorer, open the folder,
+click in the address bar, type `powershell`, and press Enter. (Or open PowerShell and
+`cd` to the folder's path.) Every command below assumes you're sitting in this folder.
+
+You also need two free tools installed (each is a normal Windows installer):
+
+- **Python 3.12+** — [python.org/downloads](https://www.python.org/downloads/)
+  (tick "Add python.exe to PATH" during install)
+- **Node.js 18+** — [nodejs.org](https://nodejs.org/)
+
+### Step 1 — Install the `scrapbook` command
 
 ```powershell
-# 1. Install the Python package (provides the `scrapbook` CLI)
 pip install -e .
+```
 
-# 2. Create the local database and data folders
+The `.` at the end means "install from the *current folder*" — that's why you must run
+it inside the project folder. It reads `pyproject.toml` here and installs the project's
+Python code plus its dependencies, which gives you a new terminal command: `scrapbook`.
+You only ever do this once per machine.
+
+### Step 2 — Create the data folders
+
+```powershell
 scrapbook init
+```
 
-# 3. Download all blog posts and photos (needs internet, one time)
+Don't worry — there is **no database server to install or run**. The "database" is just
+one ordinary file (`data\db\scrapbook.sqlite`, a SQLite file) that this command creates,
+along with empty folders for photos. Nothing runs in the background; it's all just files
+inside this project folder:
+
+```
+data\
+├── db\scrapbook.sqlite   ← the "database" (a single file)
+├── media\                ← photos will be downloaded here
+└── raw\                  ← saved copies of the original blog pages
+```
+
+### Step 3 — Download the blog (needs internet, one time)
+
+```powershell
 scrapbook sync --source grothadventures
+```
 
-# 4. Assign each post to a book chapter
+Pulls every post and photo from grothadventures.com into `data\`. Takes a few minutes.
+
+### Step 4 — Assign posts to book chapters
+
+```powershell
 python scripts/assign_topics.py
+```
 
-# 5. Build the web app
+### Step 5 — Build the web app
+
+```powershell
 cd app
 npm install
 npm run build
 cd ..
+```
 
-# 6. Open the book
+### Step 6 — Open the book
+
+```powershell
 scrapbook serve
 ```
 
-`scrapbook serve` starts a local server at **http://127.0.0.1:8420** and opens it in
-your browser. From here on, no internet is needed to read the book.
+This starts a small local server at **http://127.0.0.1:8420** and opens it in your
+browser. It's only visible on your own PC. From here on, no internet is needed to read
+the book — steps 1–5 never need repeating (except syncing new posts, below).
 
 ## Everyday use
 
