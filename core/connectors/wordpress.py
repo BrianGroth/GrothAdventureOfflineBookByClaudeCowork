@@ -532,8 +532,16 @@ class WordPressConnector:
         entry: Entry,
         position: int,
         semaphore: asyncio.Semaphore,
+        linked_ids: set[int],
     ) -> Optional[Media]:
-        """Stage 3: Download a single media file."""
+        """Stage 3: Download a single media file.
+
+        linked_ids holds media ids already linked to this entry during this
+        post's downloads. The session runs with autoflush=False, so a pending
+        EntryMedia row is invisible to the guard query below — without this
+        set, a post using the same photo twice would insert a duplicate
+        (entry_id, media_id) link and blow up the commit.
+        """
         async with semaphore:
             url = image_info["url"]
             if not url or not url.startswith("http"):
@@ -579,11 +587,12 @@ class WordPressConnector:
                 ).first()
 
                 if existing and existing.status == "downloaded":
-                    # Just link it
+                    # Just link it (once)
                     em = db.query(EntryMedia).filter_by(
                         entry_id=entry.id, media_id=existing.id
                     ).first()
-                    if not em:
+                    if not em and existing.id not in linked_ids:
+                        linked_ids.add(existing.id)
                         db.add(EntryMedia(
                             entry_id=entry.id,
                             media_id=existing.id,
@@ -635,13 +644,14 @@ class WordPressConnector:
                 db.add(media_obj)
                 db.flush()
 
-                role = "hero" if position == 0 else "inline"
-                db.add(EntryMedia(
-                    entry_id=entry.id,
-                    media_id=media_obj.id,
-                    position=position,
-                    role=role,
-                ))
+                if media_obj.id not in linked_ids:
+                    linked_ids.add(media_obj.id)
+                    db.add(EntryMedia(
+                        entry_id=entry.id,
+                        media_id=media_obj.id,
+                        position=position,
+                        role="hero" if position == 0 else "inline",
+                    ))
 
                 self.stats["media_downloaded"] += 1
                 return media_obj
@@ -764,11 +774,24 @@ class WordPressConnector:
 
                         # Stage 3: Download media
                         if not self.no_media and post_data["images"]:
+                            # A post can reference the same image more than
+                            # once — download and link each URL only once.
+                            unique_images = []
+                            seen_urls: set[str] = set()
+                            for img in post_data["images"]:
+                                u = img.get("url")
+                                if u and u in seen_urls:
+                                    continue
+                                if u:
+                                    seen_urls.add(u)
+                                unique_images.append(img)
+
                             media_semaphore = asyncio.Semaphore(self.concurrency)
+                            linked_ids: set[int] = set()
                             media_tasks = []
-                            for i, img in enumerate(post_data["images"][:20]):  # max 20 images per post
+                            for i, img in enumerate(unique_images[:20]):  # max 20 images per post
                                 media_tasks.append(
-                                    self._download_media(client, db, img, entry, i, media_semaphore)
+                                    self._download_media(client, db, img, entry, i, media_semaphore, linked_ids)
                                 )
 
                             media_results = await asyncio.gather(*media_tasks, return_exceptions=True)
@@ -784,7 +807,15 @@ class WordPressConnector:
                         # Stage 4: Auto-tag
                         apply_auto_tags(db, entry, self.cfg)
 
-                        db.commit()
+                        try:
+                            db.commit()
+                        except Exception as e:
+                            # One bad post must not kill a long sync: drop its
+                            # pending changes, count it, move on. An
+                            # incremental re-run will retry it.
+                            db.rollback()
+                            self._log(f"Commit failed for {url}: {e}")
+                            self.stats["errors"] += 1
 
                     progress.advance(task)
 

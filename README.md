@@ -15,6 +15,12 @@ The book has two tables of contents:
 
 ## Quick start (first time on a new machine)
 
+> **Shortcut:** after Step 0 below (getting the folder plus Python and Node.js
+> installed), you can skip the rest of this section — just double-click
+> **`InitialRun.cmd`**. It runs every step for you and finishes with a ready
+> book folder. Later, double-click **`Update.cmd`** to pull in new blog posts.
+> The steps are still written out below so you know what's happening.
+
 > **Already set up?** If this folder is already on your PC and you've done these steps
 > before (e.g. the machine you originally built it on), skip straight to
 > [Everyday use](#everyday-use).
@@ -114,7 +120,12 @@ scrapbook serve
 
 ## Getting new blog posts into the book
 
-Every month or so, with internet:
+Every month or so, with internet: **double-click `Update.cmd`**. It pulls new posts,
+re-applies chapters, and refreshes the shareable book folder in one go. (To refresh a
+copy on a USB stick directly, run it with the folder as an argument:
+`.\Update.cmd E:\GrothBook`.)
+
+Or do the same by hand:
 
 ```powershell
 scrapbook sync --source grothadventures      # pull new posts + photos
@@ -135,6 +146,8 @@ There is also a one-shot script that does sync + reindex + export:
 ## Make a shareable USB / archive copy
 
 To give the book to a friend (or keep a copy that will still open decades from now):
+**double-click `InitialRun.cmd`** (builds everything, ends with the book folder at
+`data\exports\static-book`), or export directly to a drive:
 
 ```powershell
 scrapbook export --format static-book --output E:\GrothBook
