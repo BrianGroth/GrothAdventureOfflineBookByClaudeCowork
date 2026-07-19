@@ -1,14 +1,26 @@
-"""Assign each entry a book chapter (topic) for the topic-based table of contents.
+"""Assign every entry a book chapter (topic) for the topic-based table of contents.
 
-Topics were curated by reading every entry. They are stored as tags with
-category='collection' and slug 'topic-<name>', with EntryTag.auto=0 so a
-re-sync never clobbers them. Re-runnable: clears and re-applies assignments.
+Two layers:
+1. CURATED — hand-picked chapters, keyed by permalink slug (stable across
+   databases and re-imports). These were curated by reading each post.
+2. AUTO_RULES — keyword scoring for every entry not in CURATED (the full
+   2018+ archive and any newly synced post). Title hits count 3x, body hits
+   1x; the best-scoring chapter wins, ties go to the earlier rule. Entries
+   with no signal land in the "New Adventures" fallback chapter.
+
+Chapters are stored as tags (category='collection', slug 'topic-*');
+curated links get EntryTag.auto=0, keyword-assigned ones auto=1.
+Re-runnable: clears and re-applies all topic assignments.
+
+To override an auto assignment: add the post's permalink slug to CURATED
+and re-run. The script prints fallback entries so you can file them.
 
 Usage (from project root):
     python scripts/assign_topics.py
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 import sys
 from pathlib import Path
@@ -49,12 +61,12 @@ TOPICS = {
     ),
     "topic-downunder": (
         "Down Under & Beyond", "🦘",
-        "Singapore, New Zealand & Australia in one great loop",
+        "Farther afield: Australia, New Zealand, Singapore, Dubai & the Middle East",
         "#a8622d", 7,
     ),
     "topic-america": (
         "American Adventures", "🗽",
-        "Stateside visits: New York, Vegas, LA & the Pacific Northwest",
+        "North American visits: New York, Vegas, California & the Northwest",
         "#34698a", 8,
     ),
     "topic-sunshine": (
@@ -69,114 +81,219 @@ TOPICS = {
     ),
 }
 
-# entry id -> topic slug (curated by reading each entry)
-ASSIGNMENTS = {
-    # ── 2022 ──
-    100: "topic-sunshine",      # Jersey, Day 2
-    99: "topic-sunshine",       # Jersey, West Coast
-    98: "topic-sunshine",       # Jersey, Wedding Day
-    97: "topic-lowlands",       # Hot day in Amsterdam
-    96: "topic-lowlands",       # New Benches in Amsterdam
-    95: "topic-america",        # Mountain Climbing at 80 (Mt. St. Helens)
-    94: "topic-transport",      # New Small Electric Cars in Amsterdam
-    93: "topic-piper",          # Scottish Cows (Ayrshire) & Poodles
-    92: "topic-lowlands",       # Random Amsterdam Things
-    91: "topic-piper",          # Happy Poodle on The Amstel
-    90: "topic-seasons",        # Fall Colors in Amsterdam
-    89: "topic-lowlands",       # Amsterdam Marathon
-    88: "topic-seasons",        # October Colors
-    87: "topic-america",        # Flying over San Francisco
-    86: "topic-seasons",        # Pre-Winter Scenes
-    85: "topic-celebrations",   # Holiday lights are starting up
-    84: "topic-transport",      # A Dutch School "Bus"
-    # ── 2023 ──
-    83: "topic-piper",          # Rainy Dog Walk
-    82: "topic-lowlands",       # Touring Amsterdam
-    81: "topic-lowlands",       # Peanut butter store in Amsterdam
-    80: "topic-seasons",        # February Evening Stroll
-    79: "topic-lowlands",       # Distilling Rum in Amsterdam
-    78: "topic-europe",         # Two Days in Dublin
-    77: "topic-seasons",        # Flower Time in Amsterdam
-    76: "topic-lowlands",       # Beach Shacks at Zandvoort
-    75: "topic-europe",         # Champagne Roadtrip: May 2023
-    74: "topic-transport",      # Bicycle Towing
-    73: "topic-transport",      # Robot Cleaner at Schiphol
-    72: "topic-america",        # Escape to Brookhaven, NY
-    71: "topic-lowlands",       # New Art in Amsterdam Zuid
-    70: "topic-piper",          # Highland Cattle in the Netherlands
-    69: "topic-europe",         # Hiking in the Alsace, France region
-    68: "topic-europe",         # Strasbourg, September 2023
-    67: "topic-piper",          # Wild Horses & Cows
-    66: "topic-lowlands",       # Art & Books
-    65: "topic-america",        # Griffith Observatory
-    64: "topic-transport",      # Eurostar Challenges
-    63: "topic-celebrations",   # Made it to London (New Year's)
-    # ── 2024 ──
-    62: "topic-europe",         # Lille, France
-    61: "topic-europe",         # A Cold Day in Lille
-    60: "topic-lowlands",       # Our New Place
-    59: "topic-europe",         # My Walking Commute in London
-    58: "topic-seasons",        # Keukenhof
-    57: "topic-piper",          # Piper in the Blue Bells
-    56: "topic-japan",          # Unplanned visit to Tokyo Disney Sea
-    55: "topic-japan",          # Off to Kyoto
-    54: "topic-japan",          # Kyoto Weekend
-    53: "topic-japan",          # Mt. Fuji from the Shinkansen Train
-    52: "topic-japan",          # A day in Asakusa, Tokyo
-    51: "topic-japan",          # Tsukuji Outer Market
-    50: "topic-japan",          # Lunch in Yokohama
-    49: "topic-europe",         # Weekend in Madrid
-    48: "topic-europe",         # A Few Days in Dublin, June 2024
-    47: "topic-lowlands",       # Elswout, Netherlands
-    46: "topic-europe",         # Day 1 in Budapest
-    45: "topic-europe",         # Day 2 in Budapest
-    44: "topic-europe",         # Budapest Day 3
-    43: "topic-celebrations",   # AI View of This Site
-    42: "topic-lowlands",       # The Alkmaar Cheese Market
-    41: "topic-america",        # A Week in NYC
-    40: "topic-europe",         # 24 Hours in Paris
-    39: "topic-transport",      # The Mail Rail
-    38: "topic-lowlands",       # Car Wash in The Netherlands
-    37: "topic-japan",          # Weekend in Osaka
-    36: "topic-japan",          # Kyoto for a few days
-    35: "topic-japan",          # Nara with deer
-    34: "topic-japan",          # A week in Osaka
-    # ── 2025 ──
-    33: "topic-europe",         # A Few Days in Madrid
-    32: "topic-lowlands",       # Afternoon in Amsterdam
-    31: "topic-celebrations",   # Sam's Bowl
-    30: "topic-seasons",        # Spring is coming to the Netherlands
-    29: "topic-lowlands",       # Canal Ride in Haarlem
-    28: "topic-celebrations",   # 25th Anniversary
-    27: "topic-lowlands",       # But Building (hutten bouwen)
-    26: "topic-europe",         # Weekend in Paris
-    25: "topic-seasons",        # June in the Netherlands
-    24: "topic-downunder",      # A day in Singapore
-    23: "topic-downunder",      # A Day in Auckland, NZ
-    18: "topic-downunder",      # Rotorua, NZ Road Trip
-    22: "topic-downunder",      # A Few Days in Sydney
-    21: "topic-downunder",      # Adventures in Cairns
-    20: "topic-downunder",      # A Day in The Changi Airport (Singapore)
-    19: "topic-america",        # A few days in NYC
-    17: "topic-piper",          # Piper in Amsterdam
-    16: "topic-piper",          # Hiking with the deer
-    15: "topic-transport",      # Pit Stop on the way to F1
-    14: "topic-transport",      # Charging our Volvo C40
-    13: "topic-america",        # My Dreamforce 2025
-    12: "topic-piper",          # A Happy Piper
-    11: "topic-celebrations",   # Cologne (Köln) Christmas Markets
-    10: "topic-europe",         # December Dublin
-    9: "topic-celebrations",    # 2025 Travel Statistics
-    # ── 2026 ──
-    8: "topic-celebrations",    # New Year's in Brighton
-    7: "topic-america",         # Hello Las Vegas
-    6: "topic-america",         # Sting in Las Vegas
-    5: "topic-sunshine",        # Tenerife, February 2026
-    4: "topic-sunshine",        # Malta, March 2026
-    3: "topic-seasons",         # Spring in the Netherlands
-    2: "topic-sunshine",        # Turkey, May 2026
-    1: "topic-piper",           # Our Cows & Horses
+FALLBACK = "topic-new"
+FALLBACK_ROW = ("New Adventures", "✨", "Stories not yet filed into a chapter", "#8b6f4e", 99)
+
+# permalink slug -> topic slug (hand-curated by reading each post)
+CURATED = {
+    "jersey-day-2": "topic-sunshine",
+    "jersey-west-coast": "topic-sunshine",
+    "jersey-wedding-day": "topic-sunshine",
+    "jersey-part-1": "topic-sunshine",
+    "hot-day-in-amsterdam": "topic-lowlands",
+    "new-benches-in-amsterdam": "topic-lowlands",
+    "mountain-climbing-at-80": "topic-america",
+    "new-small-electric-cars-in-amsterdam": "topic-transport",
+    "scottish-cows-ayrshire-poodles": "topic-piper",
+    "random-amsterdam-things": "topic-lowlands",
+    "happy-poodle-on-the-amstel": "topic-piper",
+    "fall-colors-in-amsterdam-2": "topic-seasons",
+    "amsterdam-marathon": "topic-lowlands",
+    "october-colors": "topic-seasons",
+    "flying-over-san-francisco": "topic-america",
+    "pre-winter-scenes": "topic-seasons",
+    "holiday-lights-are-starting-up-3": "topic-celebrations",
+    "a-dutch-school-bus": "topic-transport",
+    "rainy-dog-walk": "topic-piper",
+    "touring-amsterdam": "topic-lowlands",
+    "peanut-butter-store-in-amsterdam": "topic-lowlands",
+    "february-evening-stroll": "topic-seasons",
+    "distilling-rum-in-amsterdam": "topic-lowlands",
+    "two-days-in-dublin": "topic-europe",
+    "flower-time-in-amsterdam": "topic-seasons",
+    "beach-shacks-at-zandvoort": "topic-lowlands",
+    "champagne-roadtrip-may-2023": "topic-europe",
+    "bicycle-towing": "topic-transport",
+    "robot-cleaner-at-schiphol": "topic-transport",
+    "escape-to-brookhaven-ny": "topic-america",
+    "new-art-in-amsterdam-zuid": "topic-lowlands",
+    "highland-cattle-in-the-netherlands": "topic-piper",
+    "hiking-in-the-alsace-france-region": "topic-europe",
+    "strasbourg-september-2023": "topic-europe",
+    "wild-horses-cows": "topic-piper",
+    "art-books": "topic-lowlands",
+    "griffith-observatory": "topic-america",
+    "eurostar-challenges": "topic-transport",
+    "made-it-to-london": "topic-celebrations",
+    "lille-france": "topic-europe",
+    "a-cold-day-in-lille": "topic-europe",
+    "our-new-place": "topic-lowlands",
+    "my-walking-commute-in-london": "topic-europe",
+    "keukenhof": "topic-seasons",
+    "piper-in-the-blue-bells": "topic-piper",
+    "unplanned-visit-to-tokyo-disney-sea": "topic-japan",
+    "off-to-kyoto": "topic-japan",
+    "kyoto-weekend": "topic-japan",
+    "my-fuji-from-the-shinkansen-train": "topic-japan",
+    "a-day-in-asakusa-tokyo": "topic-japan",
+    "tsukuji-outer-market": "topic-japan",
+    "lunch-in-yokohama": "topic-japan",
+    "weekend-in-madrid": "topic-europe",
+    "a-few-days-in-dublin-june-2024": "topic-europe",
+    "elswout-netherlands": "topic-lowlands",
+    "day-1-in-budapest": "topic-europe",
+    "dat-2-in-budapest": "topic-europe",
+    "budapest-day-4": "topic-europe",
+    "ai-view-of-this-site": "topic-celebrations",
+    "the-alkmaar-cheese-market": "topic-lowlands",
+    "a-week-in-nyc": "topic-america",
+    "24-hours-in-paris-2": "topic-europe",
+    "the-mail-rail": "topic-transport",
+    "car-wash-in-the-netherlands": "topic-lowlands",
+    "weekend-in-osaka": "topic-japan",
+    "kyoto-for-a-few-days": "topic-japan",
+    "nara-with-deer": "topic-japan",
+    "a-week-in-osaka": "topic-japan",
+    "a-few-days-in-madrid": "topic-europe",
+    "afternoon-in-amsterdam": "topic-lowlands",
+    "sams-bowl": "topic-celebrations",
+    "spring-is-coming-to-the-netherlands": "topic-seasons",
+    "canal-ride-in-haarlem": "topic-lowlands",
+    "25th-anniversary": "topic-celebrations",
+    "but-building-hutten-bouwen": "topic-lowlands",
+    "weekend-in-paris": "topic-europe",
+    "june-in-the-netherlands": "topic-seasons",
+    "a-day-in-singapore": "topic-downunder",
+    "a-day-in-auckland-nz": "topic-downunder",
+    "rotorua-nz-road-trip": "topic-downunder",
+    "a-few-days-in-sydney": "topic-downunder",
+    "adventures-in-cairns": "topic-downunder",
+    "a-day-in-the-changi-airport-singapore": "topic-downunder",
+    "a-few-days-in-nyc": "topic-america",
+    "piper-in-amsterdam-2": "topic-piper",
+    "hiking-with-the-deer": "topic-piper",
+    "put-stop-on-the-way-to-f1": "topic-transport",
+    "charging-our-volvo-c40": "topic-transport",
+    "my-dreamforce-2025": "topic-america",
+    "a-happy-piper-2": "topic-piper",
+    "cologne-koln-christmas-markets": "topic-celebrations",
+    "december-dublin": "topic-europe",
+    "2025-travel-statistics": "topic-celebrations",
+    "new-years-in-brighton": "topic-celebrations",
+    "hello-las-vegas": "topic-america",
+    "sting-in-las-vegas": "topic-america",
+    "tenerife-february-2026": "topic-sunshine",
+    "malta-march-2026": "topic-sunshine",
+    "spring-in-the-netherlands": "topic-seasons",
+    "turkey-may-2026": "topic-sunshine",
+    "our-cows-horses": "topic-piper",
+    # ── Curated strays from the 2018+ archive ──
+    "assembling-clean-water-filters": "topic-celebrations",
+    "our-garden-in-3d": "topic-lowlands",
+    "new-phone-test": "topic-lowlands",
+    "hiking-with-mushrooms": "topic-lowlands",
+    "please-play": "topic-piper",
+    "3000-cabernet-sauvignon-1998": "topic-celebrations",
+    "we-have-a-3rd-pet": "topic-piper",
 }
+
+# Ordered rules: earlier rules win ties. Keywords match whole words,
+# case-insensitively, in the title (3 points) and body text (1 point).
+AUTO_RULES = [
+    ("topic-japan", [
+        "tokyo", "kyoto", "osaka", "nara", "japan", "shinkansen", "yokohama",
+        "fuji", "asakusa",
+    ]),
+    ("topic-downunder", [
+        "sydney", "auckland", "cairns", "singapore", "zealand", "australia",
+        "rotorua", "changi", "dubai", "tel aviv", "jerusalem", "israel",
+        "jaffa", "burj", "persian gulf", "ramadan", "koala", "wombat",
+    ]),
+    ("topic-america", [
+        "nyc", "new york", "brooklyn", "manhattan", "vegas", "san francisco",
+        "seattle", "berkeley", "california", "utah", "alta", "snowbird",
+        "niagara", "toronto", "los angeles", "beverly hills", "49ers",
+        "levi stadium", "dreamforce", "jfk", "twa", "helens", "oregon",
+        "space shuttle", "museum of flight", "pickerel",
+    ]),
+    ("topic-sunshine", [
+        "jersey", "tenerife", "malta", "canary", "cappadocia", "turkey",
+        "valletta", "sliema",
+    ]),
+    ("topic-europe", [
+        "london", "paris", "dublin", "madrid", "budapest", "lille", "lisbon",
+        "porto", "portugal", "heidelberg", "stuttgart", "frankfurt",
+        "cologne", "copenhagen", "stockholm", "zurich", "prague", "barcelona",
+        "dusseldorf", "düsseldorf", "malaga", "málaga", "ireland", "france",
+        "germany", "german", "spain", "champagne", "alsace", "strasbourg", "brighton",
+        "cascais", "sintra", "czech", "vienna", "berlin", "munich", "italy",
+        "rome", "edinburgh", "scotland",
+    ]),
+    ("topic-transport", [
+        "bike", "bikes", "bicycle", "bicycles", "tram", "trams", "train",
+        "trains", "klm", "boeing", "airport", "schiphol", "eurostar",
+        "e-golf", "electric car", "electric cars", "charging", "cargo",
+        "scooter", "karts", "metro", "cockpit", "vehicle", "vehicles",
+        "wheeler", "spare tire",
+    ]),
+    ("topic-piper", [
+        "piper", "busby", "poodle", "poodles", "dog", "dogs", "puppy",
+        "cow", "cows", "horse", "horses", "deer", "swan", "swans", "bison",
+        "buffalo", "wildlife", "parrot", "parrots", "fox", "clydesdale",
+        "clydesdales",
+    ]),
+    ("topic-celebrations", [
+        "christmas", "sinterklaas", "king's day", "kings day", "pride",
+        "new year", "thanksgiving", "birthday", "anniversary", "mother's day",
+        "father's day", "easter", "halloween", "holiday", "holidays", "xmas",
+        "fireworks", "wedding", "light festival",
+    ]),
+    ("topic-seasons", [
+        "spring", "springtime", "tulip", "tulips", "autumn", "fall colors",
+        "snow", "snowy", "winter", "summer", "flower", "flowers", "daffodil",
+        "blossom", "frozen", "freeze", "freezing", "seasons", "leaves",
+    ]),
+    ("topic-lowlands", [
+        "amsterdam", "amsterdamse", "netherlands", "dutch", "holland",
+        "zandvoort", "haarlem", "utrecht", "dunes", "amstel", "canal",
+        "canals", "rijks", "van gogh", "vondelpark", "noordwijk", "gable",
+        "albert cuyp", "de pijp", "amstelpark", "north sea", "rotterdam",
+        "delft", "leiden", "foodhallen", "a'dam", "elswout", "scheepvaart",
+        "garden", "basketball", "car wash",
+    ]),
+]
+
+_word_res = {
+    topic: [re.compile(r"\b" + re.escape(kw) + r"\b") for kw in kws]
+    for topic, kws in AUTO_RULES
+}
+
+
+def slug_of(permalink: str) -> str:
+    m = re.search(r"/(\d{4})/(\d{2})/(\d{2})/([^/]+)/?$", permalink or "")
+    return m.group(4) if m else (permalink or "")
+
+
+def _normalize(s: str) -> str:
+    # Curly apostrophes/quotes would break "father's day"-style keywords
+    return s.lower().replace("’", "'").replace("‘", "'")
+
+
+def auto_topic(title: str, text: str) -> str | None:
+    """Best-scoring chapter for an uncurated entry, or None if no signal."""
+    title_l = _normalize(title or "")
+    text_l = _normalize((text or "")[:2000])
+    best_topic, best_score = None, 0
+    for topic, _ in AUTO_RULES:
+        score = 0
+        for rx in _word_res[topic]:
+            if rx.search(title_l):
+                score += 3
+            elif rx.search(text_l):
+                score += 1
+        if score > best_score:  # strict: ties keep the earlier rule
+            best_topic, best_score = topic, score
+    return best_topic
 
 
 def main() -> int:
@@ -187,13 +304,12 @@ def main() -> int:
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
 
-    # Upsert topic tags
+    # Upsert topic tags (incl. fallback)
+    all_topics = dict(TOPICS)
+    all_topics[FALLBACK] = FALLBACK_ROW
     tag_ids = {}
-    for slug, (label, emoji, tagline, color, order) in TOPICS.items():
+    for slug, (label, _emoji, _tagline, color, _order) in all_topics.items():
         row = cur.execute("SELECT id FROM tag WHERE slug = ?", (slug,)).fetchone()
-        # Encode emoji/tagline/order into label-adjacent fields we have:
-        # label stays clean; metadata is served by the book API from this table
-        # plus the TOPICS constants mirrored in core/api/routers/book.py.
         if row:
             tag_ids[slug] = row[0]
             cur.execute("UPDATE tag SET label = ?, category = 'collection', color = ? WHERE id = ?",
@@ -203,50 +319,51 @@ def main() -> int:
                         (slug, label, color))
             tag_ids[slug] = cur.lastrowid
 
-    # Clear previous topic assignments, then apply
+    # Clear previous topic assignments, then re-apply everything
     cur.execute(
         "DELETE FROM entry_tag WHERE tag_id IN (SELECT id FROM tag WHERE slug LIKE 'topic-%')"
     )
 
-    missing = []
-    for entry_id, slug in ASSIGNMENTS.items():
-        row = cur.execute("SELECT id, title FROM entry WHERE id = ?", (entry_id,)).fetchone()
-        if not row:
-            missing.append(entry_id)
-            continue
-        cur.execute(
-            "INSERT OR IGNORE INTO entry_tag (entry_id, tag_id, auto) VALUES (?, ?, 0)",
-            (entry_id, tag_ids[slug]),
-        )
+    entries = cur.execute(
+        "SELECT id, permalink, title, substr(text_content, 1, 2000) FROM entry"
+    ).fetchall()
 
-    # Report entries with no topic (e.g. newly synced posts)
-    unassigned = cur.execute("""
-        SELECT e.id, e.event_date, e.title FROM entry e
-        WHERE e.id NOT IN (
-            SELECT et.entry_id FROM entry_tag et
-            JOIN tag t ON t.id = et.tag_id WHERE t.slug LIKE 'topic-%'
+    counts: dict[str, int] = {}
+    fallback_entries = []
+    curated_used = set()
+    for entry_id, permalink, title, text in entries:
+        s = slug_of(permalink)
+        topic = CURATED.get(s)
+        manual = topic is not None
+        if manual:
+            curated_used.add(s)
+        else:
+            topic = auto_topic(title, text) or FALLBACK
+        cur.execute(
+            "INSERT OR IGNORE INTO entry_tag (entry_id, tag_id, auto) VALUES (?, ?, ?)",
+            (entry_id, tag_ids[topic], 0 if manual else 1),
         )
-        ORDER BY e.event_date
-    """).fetchall()
+        counts[topic] = counts.get(topic, 0) + 1
+        if topic == FALLBACK:
+            fallback_entries.append((entry_id, s, title))
 
     con.commit()
 
-    counts = cur.execute("""
-        SELECT t.slug, COUNT(*) FROM entry_tag et JOIN tag t ON t.id = et.tag_id
-        WHERE t.slug LIKE 'topic-%' GROUP BY t.slug ORDER BY COUNT(*) DESC
-    """).fetchall()
-    print("Topic assignments:")
-    for slug, n in counts:
-        print(f"  {TOPICS[slug][0]:<30} {n}")
-    total = sum(n for _, n in counts)
-    print(f"  {'TOTAL':<30} {total}")
+    print("Chapter assignments:")
+    for slug, n in sorted(counts.items(), key=lambda x: -x[1]):
+        print(f"  {all_topics[slug][0]:<30} {n}")
+    print(f"  {'TOTAL':<30} {sum(counts.values())}")
 
-    if missing:
-        print(f"\nWARNING: mapped entry ids not found in DB: {missing}")
-    if unassigned:
-        print(f"\n{len(unassigned)} entries have no topic (add them to ASSIGNMENTS):")
-        for eid, date, title in unassigned:
-            print(f"  #{eid} {date} {title}")
+    unused = set(CURATED) - curated_used
+    if unused:
+        print(f"\nNote: {len(unused)} curated slugs matched no entry: {sorted(unused)[:5]}…"
+              if len(unused) > 5 else f"\nNote: curated slugs matched no entry: {sorted(unused)}")
+
+    if fallback_entries:
+        print(f"\n{len(fallback_entries)} entries had no keyword signal (in 'New Adventures').")
+        print("Give them a home by adding their slug to CURATED in this script:")
+        for eid, s, title in fallback_entries:
+            print(f'    "{s}": "topic-…",  # {title}')
 
     return 0
 

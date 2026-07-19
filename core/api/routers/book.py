@@ -22,8 +22,8 @@ TOPIC_META = {
     "topic-transport": ("🚲", "The curious ways the world gets around", 4),
     "topic-europe": ("🏰", "City breaks and road trips across the continent", 5),
     "topic-japan": ("🗾", "Two trips east: Tokyo, Kyoto, Osaka, Nara & Mt. Fuji", 6),
-    "topic-downunder": ("🦘", "Singapore, New Zealand & Australia in one great loop", 7),
-    "topic-america": ("🗽", "Stateside visits: New York, Vegas, LA & the Pacific Northwest", 8),
+    "topic-downunder": ("🦘", "Farther afield: Australia, New Zealand, Singapore, Dubai & the Middle East", 7),
+    "topic-america": ("🗽", "North American visits: New York, Vegas, California & the Northwest", 8),
     "topic-sunshine": ("🏝️", "Jersey, Tenerife, Malta & Turkey — warm light and open water", 9),
     "topic-celebrations": ("🎉", "Anniversaries, holidays, and moments worth marking", 10),
 }
@@ -33,7 +33,7 @@ FALLBACK_TOPIC = {
     "slug": "topic-new",
     "label": "New Adventures",
     "emoji": "✨",
-    "tagline": "Recently synced stories awaiting a chapter",
+    "tagline": "Stories not yet filed into a chapter",
     "color": "#8b6f4e",
     "order": 99,
 }
