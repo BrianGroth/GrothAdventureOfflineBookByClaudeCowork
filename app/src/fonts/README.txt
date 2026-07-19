@@ -1,4 +1,9 @@
-Font files required for the Groth Adventures Scrapbook UI.
+Font files for the Groth Adventures book UI.
+
+These live in src/fonts (not public/) so Vite inlines them into the
+single-file build — that keeps them working when the exported book is
+opened straight from a folder (file://). If you ever replace them,
+keep the filenames matching src/styles/theme.css.
 
 Download these variable font files and place them in this directory:
 

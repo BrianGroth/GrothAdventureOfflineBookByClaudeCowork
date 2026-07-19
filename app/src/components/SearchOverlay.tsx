@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBook, formatDate } from '../book/BookContext'
+import { isStaticBook, staticSearch } from '../book/staticData'
 
 interface SearchResult {
   id: number
@@ -15,7 +16,7 @@ interface SearchOverlayProps {
 }
 
 export default function SearchOverlay({ onClose, onPick }: SearchOverlayProps) {
-  const { pageNo } = useBook()
+  const { pageNo, byId } = useBook()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [active, setActive] = useState(0)
@@ -36,16 +37,25 @@ export default function SearchOverlay({ onClose, onPick }: SearchOverlayProps) {
     }
     debounce.current = window.setTimeout(() => {
       setSearching(true)
-      fetch(`/api/search?q=${encodeURIComponent(q)}&limit=12`)
-        .then((r) => r.json())
-        .then((data) => {
-          setResults(data.items || [])
+      const lookup = isStaticBook()
+        ? // USB/folder copy: search the baked text index in the browser,
+          // and take thumbnails from the TOC covers.
+          staticSearch(q, 12).then((items) =>
+            items.map((r) => ({ ...r, hero: byId.get(r.id)?.cover || null })),
+          )
+        : fetch(`/api/search?q=${encodeURIComponent(q)}&limit=12`)
+            .then((r) => r.json())
+            .then((data) => (data.items || []) as SearchResult[])
+      lookup
+        .then((items) => {
+          setResults(items)
           setActive(0)
         })
         .catch(() => setResults([]))
         .finally(() => setSearching(false))
     }, 220)
     return () => window.clearTimeout(debounce.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
   function handleKey(e: React.KeyboardEvent) {

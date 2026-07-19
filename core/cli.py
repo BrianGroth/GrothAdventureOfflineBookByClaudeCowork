@@ -430,8 +430,37 @@ def export(
     cfg = _load_and_init(data_dir, config)
     _check_schema_or_exit(cfg)
 
+    if format == "static-book":
+        # A plain folder that works by double-clicking index.html — for USB
+        # sticks and archives. Photos are copied incrementally (by content
+        # hash), so re-exporting after a sync only adds what's new.
+        from core.static_export import export_static_book
+        from core.db.session import get_session_local
+
+        dist_dir = Path(__file__).parent.parent / "app" / "dist"
+        out_dir = output if output is not None else cfg.export_dir / "static-book"
+
+        db = get_session_local()
+        try:
+            stats = export_static_book(db, cfg, dist_dir, Path(out_dir))
+        except FileNotFoundError as exc:
+            rprint(f"[red]{exc}[/red]")
+            raise typer.Exit(code=1)
+        finally:
+            db.close()
+
+        rprint(f"[green]✓[/green] Static book written to [bold]{out_dir}[/bold]")
+        rprint(
+            f"  {stats['entries']} stories · "
+            f"{stats['photos_copied']} photos copied, "
+            f"{stats['photos_already_there']} already there"
+            + (f", [yellow]{stats['photos_missing']} missing[/yellow]" if stats["photos_missing"] else "")
+        )
+        rprint("  Copy the folder anywhere (USB stick, cloud drive) — open index.html to read the book.")
+        return
+
     if format != "bundle":
-        rprint(f"[red]Unknown format: {format}. Only 'bundle' is supported.[/red]")
+        rprint(f"[red]Unknown format: {format}. Supported: 'bundle', 'static-book'.[/red]")
         raise typer.Exit(code=1)
 
     import zipfile

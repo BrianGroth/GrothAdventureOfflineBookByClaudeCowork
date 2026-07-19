@@ -3,14 +3,16 @@
    A page-flip scrapbook design system
    ==================================================== */
 
-/* Self-hosted fonts only — no external network calls. */
+/* Self-hosted fonts only — no external network calls. Referenced relative to
+   this file (src/fonts/) so Vite inlines them into the single-file build,
+   which keeps them working when the book is opened from a folder (file://). */
 
 @font-face {
   font-family: 'Playfair Display';
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url('/fonts/PlayfairDisplay-Regular.woff2') format('woff2');
+  src: url('../fonts/PlayfairDisplay-Regular.woff2') format('woff2');
 }
 
 @font-face {
@@ -18,7 +20,7 @@
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
-  src: url('/fonts/Lora-Regular.woff2') format('woff2');
+  src: url('../fonts/Lora-Regular.woff2') format('woff2');
 }
 
 @font-face {
@@ -26,7 +28,7 @@
   font-style: normal;
   font-weight: 300 700;
   font-display: swap;
-  src: url('/fonts/Inter-VariableFont.woff2') format('woff2');
+  src: url('../fonts/Inter-VariableFont.woff2') format('woff2');
 }
 
 :root {

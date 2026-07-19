@@ -6,6 +6,12 @@
       "runtimeExecutable": "scrapbook",
       "runtimeArgs": ["serve", "--no-browser"],
       "port": 8420
+    },
+    {
+      "name": "static-book",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8940", "--directory", "data/exports/static-book"],
+      "port": 8940
     }
   ]
 }

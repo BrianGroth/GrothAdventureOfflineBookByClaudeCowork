@@ -7,6 +7,7 @@ import {
   useState,
   ReactNode,
 } from 'react'
+import { isStaticBook, staticToc, staticEntry } from './staticData'
 
 /* ── Types ────────────────────────────────────── */
 
@@ -114,6 +115,15 @@ export function BookProvider({ children }: { children: ReactNode }) {
   const detailCache = useRef(new Map<number, Promise<EntryDetail>>())
 
   useEffect(() => {
+    // Static-book mode (USB/folder copy): the TOC was baked into the page
+    // by the exporter's boot.js — no server, no fetch.
+    const baked = staticToc()
+    if (baked) {
+      setTopics(baked.topics)
+      setEntries(baked.entries)
+      setLoading(false)
+      return
+    }
     fetch('/api/book/toc')
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -168,13 +178,15 @@ export function BookProvider({ children }: { children: ReactNode }) {
 
   const getEntry = (id: number): Promise<EntryDetail> => {
     if (!detailCache.current.has(id)) {
-      const p = fetch(`/api/entries/${id}`).then((r) => {
-        if (!r.ok) {
-          detailCache.current.delete(id)
-          throw new Error(`HTTP ${r.status}`)
-        }
-        return r.json()
-      })
+      const p = isStaticBook()
+        ? staticEntry(id)
+        : fetch(`/api/entries/${id}`).then((r) => {
+            if (!r.ok) {
+              detailCache.current.delete(id)
+              throw new Error(`HTTP ${r.status}`)
+            }
+            return r.json()
+          })
       detailCache.current.set(id, p)
     }
     return detailCache.current.get(id)!

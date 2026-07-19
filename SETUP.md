@@ -125,7 +125,8 @@ bash scripts/monthly_update.sh
 | `scrapbook sync --source grothadventures` | Sync posts |
 | `scrapbook serve` | Start web server |
 | `scrapbook reindex --fts --tags` | Rebuild search index |
-| `scrapbook export --format bundle` | Export portable bundle |
+| `scrapbook export --format bundle` | Export portable backup bundle (zip) |
+| `scrapbook export --format static-book` | Export a folder that opens by double-clicking index.html (USB/share) |
 | `scrapbook verify-bundle path.zip` | Verify a bundle |
 | `scrapbook open-bundle path.zip` | Open a bundle |
 
