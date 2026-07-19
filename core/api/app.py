@@ -43,10 +43,13 @@ def create_app(cfg: AppConfig) -> FastAPI:
     app.include_router(stats.router, prefix="/api")
     app.include_router(book.router, prefix="/api")
 
-    # Serve built React app if dist exists
+    # Serve built React app if dist exists. The build is a single self-contained
+    # index.html (see app/vite.config.ts), but an assets/ dir is still mounted
+    # if present for compatibility with non-inlined builds.
     dist_dir = Path(__file__).parent.parent.parent / "app" / "dist"
     if dist_dir.exists():
-        app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
+        if (dist_dir / "assets").is_dir():
+            app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
 
         @app.get("/", include_in_schema=False)
         @app.get("/{full_path:path}", include_in_schema=False)
@@ -54,10 +57,15 @@ def create_app(cfg: AppConfig) -> FastAPI:
             if full_path.startswith("api/"):
                 from fastapi import HTTPException
                 raise HTTPException(status_code=404)
+            # Serve real files from dist (favicon etc.), never anything outside it
+            if full_path:
+                candidate = (dist_dir / full_path).resolve()
+                if candidate.is_file() and str(candidate).startswith(str(dist_dir.resolve())):
+                    return FileResponse(str(candidate))
             index = dist_dir / "index.html"
             if index.exists():
-                # index.html must never be cached: built assets are hash-named,
-                # so a stale index would point at assets that no longer exist.
+                # index.html must never be cached: a stale copy would mask
+                # every rebuild of the app.
                 return FileResponse(str(index), headers={"Cache-Control": "no-cache"})
             return {"message": "Build the React app with: cd app && npm run build"}
     else:

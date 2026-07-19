@@ -39,9 +39,11 @@ FALLBACK_TOPIC = {
 }
 
 
-@router.get("/toc")
-def book_toc(db: Session = Depends(get_session)):
-    """Full table of contents: chapters + every entry in book (date) order."""
+def build_toc(db: Session) -> dict:
+    """Full table of contents: chapters + every entry in book (date) order.
+
+    Shared by the /api/book/toc endpoint and the static-book exporter.
+    """
     topic_tags = (
         db.query(Tag).filter(Tag.slug.like("topic-%")).all()
     )
@@ -128,3 +130,8 @@ def book_toc(db: Session = Depends(get_session)):
         topics.append(dict(FALLBACK_TOPIC))
 
     return {"topics": topics, "entries": items}
+
+
+@router.get("/toc")
+def book_toc(db: Session = Depends(get_session)):
+    return build_toc(db)

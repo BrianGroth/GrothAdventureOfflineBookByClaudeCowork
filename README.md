@@ -121,6 +121,9 @@ scrapbook sync --source grothadventures      # pull new posts + photos
 python scripts/assign_topics.py              # re-apply chapters
 ```
 
+Sync is **incremental by default**: it compares the blog's post list against what's
+already in your local database and only downloads posts it doesn't have yet.
+
 The topics script prints any **new posts that don't have a chapter yet** — open
 [scripts/assign_topics.py](scripts/assign_topics.py), add each new entry id to
 `ASSIGNMENTS`, and run it again. (Until you do, new posts appear in a temporary
@@ -128,6 +131,27 @@ The topics script prints any **new posts that don't have a chapter yet** — ope
 
 There is also a one-shot script that does sync + reindex + export:
 `.\scripts\monthly_update.ps1`
+
+## Make a shareable USB / archive copy
+
+To give the book to a friend (or keep a copy that will still open decades from now):
+
+```powershell
+scrapbook export --format static-book --output E:\GrothBook
+```
+
+That writes a **plain folder** — the app as one `index.html`, all the photos, and the
+stories as data files. Whoever gets the folder needs **no installs and no internet**:
+they just double-click **`index.html`** and start flipping pages. Everything works —
+both tables of contents, page turns, chapter threads, search, the bookmark.
+
+Updating the copy after you've synced new posts is fast — re-run the same command
+into the same folder. Photos are named by their content, so **only new photos get
+copied** (existing ones are skipped) and the small data files are refreshed. You do
+**not** need to rebuild the app (`npm run build`) unless the UI code itself changed.
+
+Without `--output` it writes to `data\exports\static-book`. Copy the folder to a USB
+stick with File Explorer, or export straight to the stick's drive letter as above.
 
 ## Reading the book
 

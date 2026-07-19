@@ -13,11 +13,8 @@ from core.db.models import Entry, EntryMedia, Media, EntryTag, Tag
 router = APIRouter(prefix="/entries", tags=["entries"])
 
 
-def _media_url(request: Request, m: Media) -> str:
-    return str(request.url_for("serve_media", sha256=m.sha256, ext=m.ext))
-
-
-def _entry_dict(entry: Entry, request: Request, include_html: bool = False) -> dict:
+def _entry_dict(entry: Entry, include_html: bool = False) -> dict:
+    """Serialize an entry. Shared by the API and the static-book exporter."""
     hero = None
     if entry.hero_media:
         hero = {
@@ -123,7 +120,7 @@ def list_entries(
     entries = entries[:limit]
 
     return {
-        "items": [_entry_dict(e, request) for e in entries],
+        "items": [_entry_dict(e) for e in entries],
         "next_cursor": entries[-1].id if has_more and entries else None,
         "has_more": has_more,
     }
@@ -161,7 +158,7 @@ def get_entry(
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
 
-    result = _entry_dict(entry, request, include_html=True)
+    result = _entry_dict(entry, include_html=True)
 
     # Adjacent entries ordered by event_date desc, id desc (same as list order)
     prev_entry = (
