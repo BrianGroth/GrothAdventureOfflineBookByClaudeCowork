@@ -142,6 +142,18 @@ already in your local database and only downloads posts it doesn't have yet. The
 export is incremental too — photos already in the book folder are skipped, so a
 refresh takes seconds rather than the ~1 hour a first build needs.
 
+> **Note on old posts.** WordPress.com's sitemap only lists about 1,000 URLs, so a
+> normal sync can't see anything older than that cut-off. To reach the full history
+> the sync also has to walk the site's month-by-month archives:
+>
+> ```powershell
+> scrapbook sync --source grothadventures --deep
+> ```
+>
+> This has already been run once to pull in everything back to December 2004, so
+> you shouldn't need it again — the ordinary `Update.cmd` finds new posts fine.
+> It's here in case the archive is ever rebuilt from scratch.
+
 New posts are filed into chapters automatically by keyword. To overrule a choice,
 open [scripts/assign_topics.py](scripts/assign_topics.py) and add the post's
 permalink slug to `CURATED` (e.g. `"a-day-in-porto": "topic-europe",`), then run

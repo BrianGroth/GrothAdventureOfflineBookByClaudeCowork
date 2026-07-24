@@ -32,6 +32,9 @@ scrapbook sync --source grothadventures
 
 Options:
 - `--full` — re-sync all posts (not just new ones)
+- `--deep` — also walk `/YYYY/MM/` date archives. Needed to reach posts older
+  than WordPress.com's ~1,000-URL sitemap cap (i.e. anything before Aug 2013).
+  Slow discovery; already run once, so only needed when rebuilding from scratch.
 - `--max-posts 20` — limit for testing
 - `--no-media` — skip image downloads
 - `--verbose` — show per-post progress
