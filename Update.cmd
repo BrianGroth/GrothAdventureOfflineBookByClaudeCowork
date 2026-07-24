@@ -15,16 +15,31 @@ rem ============================================================
 
 cd /d "%~dp0"
 
+rem Pin every step to THIS folder's copy of the code and data (see InitialRun.cmd).
+set "SCRAPBOOK_DATA_DIR=%~dp0data"
+set "BOOK=python -m core.cli"
+
 set "OUT=%~1"
 if "%OUT%"=="" set "OUT=data\exports\static-book"
 
 echo.
 echo === Groth Adventures offline book: update ===
-echo Book folder: %OUT%
+echo Archive folder: %SCRAPBOOK_DATA_DIR%
+echo Book folder   : %OUT%
 echo.
 
+if exist "%~dp0data\db\scrapbook.sqlite" goto :have_db
+echo ERROR: No archive found in this folder:
+echo   %SCRAPBOOK_DATA_DIR%
+echo.
+echo Update.cmd refreshes an existing book. Run InitialRun.cmd first,
+echo or run this from the project folder that already holds your archive.
+pause
+exit /b 1
+:have_db
+
 echo [1/3] Checking the blog for new posts...
-scrapbook sync --source grothadventures
+%BOOK% sync --source grothadventures
 if errorlevel 1 goto :fail
 
 echo [2/3] Re-applying book chapters...
@@ -32,7 +47,7 @@ python scripts\assign_topics.py
 if errorlevel 1 goto :fail
 
 echo [3/3] Refreshing the book folder...
-scrapbook export --format static-book --output "%OUT%"
+%BOOK% export --format static-book --output "%OUT%"
 if errorlevel 1 goto :fail
 
 echo.

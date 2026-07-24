@@ -20,12 +20,30 @@ Usage (from project root):
 """
 from __future__ import annotations
 
+import os
 import re
 import sqlite3
 import sys
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "db" / "scrapbook.sqlite"
+
+def _resolve_db() -> Path:
+    """Find the archive the same way the scrapbook CLI does.
+
+    Order: explicit argument, then SCRAPBOOK_DATA_DIR (what InitialRun.cmd and
+    Update.cmd set), then this project folder. Keeping these in step matters
+    when more than one copy of the project exists on the machine — otherwise
+    the CLI and this script can end up reading different archives.
+    """
+    if len(sys.argv) > 1:
+        return Path(sys.argv[1]).expanduser()
+    env_dir = os.environ.get("SCRAPBOOK_DATA_DIR")
+    if env_dir:
+        return Path(env_dir).expanduser() / "db" / "scrapbook.sqlite"
+    return Path(__file__).resolve().parent.parent / "data" / "db" / "scrapbook.sqlite"
+
+
+DB_PATH = _resolve_db()
 
 # slug -> (label, emoji, tagline, color, order)
 # Chapter order roughly follows the life the archive tells: the Bay Area
@@ -406,6 +424,9 @@ def auto_topic(title: str, text: str) -> str | None:
 def main() -> int:
     if not DB_PATH.exists():
         print(f"Database not found: {DB_PATH}")
+        print("Run InitialRun.cmd (or `scrapbook init` then `scrapbook sync`) first.")
+        print("If this project exists in more than one folder, run the .cmd file from")
+        print("the folder that holds your archive, or pass the .sqlite path as an argument.")
         return 1
 
     con = sqlite3.connect(DB_PATH)

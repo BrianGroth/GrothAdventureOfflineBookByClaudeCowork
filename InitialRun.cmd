@@ -17,34 +17,42 @@ rem ============================================================
 
 cd /d "%~dp0"
 
+rem Pin every step to THIS folder's copy of the code and data. Without this,
+rem a `scrapbook` command installed from a different copy of the project would
+rem read and write that other folder's archive.
+set "SCRAPBOOK_DATA_DIR=%~dp0data"
+set "BOOK=python -m core.cli"
+
 set "OUT=%~1"
 if "%OUT%"=="" set "OUT=data\exports\static-book"
 
 echo.
 echo === Groth Adventures offline book: initial build ===
-echo Output folder: %OUT%
+echo Project folder: %~dp0
+echo Archive folder: %SCRAPBOOK_DATA_DIR%
+echo Output folder : %OUT%
 echo.
 
 where python >nul 2>&1
 if errorlevel 1 goto :nopython
 
-rem --- Step 1: install the scrapbook command if missing ---
-where scrapbook >nul 2>&1
+rem --- Step 1: install dependencies if this folder's code can't run yet ---
+python -c "import core.cli" >nul 2>&1
 if not errorlevel 1 goto :have_cli
-echo [1/6] Installing the scrapbook command...
+echo [1/6] Installing Python dependencies...
 pip install -e .
 if errorlevel 1 goto :fail
 goto :cli_done
 :have_cli
-echo [1/6] scrapbook command already installed - skipping.
+echo [1/6] Dependencies already installed - skipping.
 :cli_done
 
 echo [2/6] Preparing the local database...
-scrapbook init
+%BOOK% init
 if errorlevel 1 goto :fail
 
 echo [3/6] Downloading blog posts and photos...
-scrapbook sync --source grothadventures
+%BOOK% sync --source grothadventures
 if errorlevel 1 goto :fail
 
 echo [4/6] Assigning posts to book chapters...
@@ -68,7 +76,7 @@ echo [5/6] Web app already built - skipping.
 :app_done
 
 echo [6/6] Writing the shareable book folder...
-scrapbook export --format static-book --output "%OUT%"
+%BOOK% export --format static-book --output "%OUT%"
 if errorlevel 1 goto :fail
 
 echo.
