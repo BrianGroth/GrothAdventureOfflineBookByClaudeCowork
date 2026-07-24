@@ -13,7 +13,8 @@
 | Navigation | Prev/next chronological | Prev/next **by date** (`←`/`→`) *and* **within chapter** (`[`/`]`), plus return-to-contents and auto-bookmark |
 | Distribution | Local server only | Local server **plus a static export** that runs from a folder with no server, no install, no internet |
 | Operation | CLI commands | Two double-clickable scripts: `InitialRun.cmd`, `Update.cmd` |
-| Archive size | ~1,700 posts est. from 2004 | **999 posts, 3,077 photos, Aug 2013 – May 2026** (see "Ingestion reality check") |
+| Archive size | ~1,700 posts est. from 2004 | **1,698 posts, 3,752 photos, Dec 2004 – May 2026** — the whole blog |
+| Chapters | Year/topic tags | **15 curated chapters**, four of them home eras (Seattle, London, Bay Area, Lowlands) with era-windowed rules |
 
 ### What the book is
 
@@ -71,18 +72,28 @@ widget. Measured against the live site:
   archive pages all return real posts — but they are not discoverable via the
   sitemap.
 
-The connector only falls back to `_walk_archives()` when the sitemap yields
-*nothing*, so today those older posts are never discovered. A read-only crawl of
-monthly archives on 2026-07-24 measured the gap: **699 posts missing**, from
-`2004/12/02` to `2013/08/21`, peaking at 132 posts in 2007.
+The connector originally fell back to `_walk_archives()` only when the sitemap
+yielded *nothing*, so those older posts were never discovered — the book held
+999 posts (~59% of the blog).
 
-**999 ingested + 699 missing = 1,698**, matching the PRD's independent estimate
-of ~1,698 posts almost exactly. The book therefore holds roughly **59% of the
-blog** — everything since August 2013, but nothing from the nine years before it.
+**Fixed (July 25, 2026).** `_walk_date_archives()` walks `/YYYY/MM/` (and
+`/page/N/`) from `archive_start_year` to the present, keeps only posts actually
+dated to the month being scanned, and unions the result with the sitemap
+deduplicated on `_source_entry_id`. Exposed as `sync --deep`; incremental runs
+skip it so the monthly update stays fast. The backfill added exactly **699
+posts**, bringing the archive to **1,698 posts (2004-12-02 → 2026-05-27) —
+100% of the blog**, matching the PRD's independent ~1,698 estimate.
 
-Closing the gap means walking year/month archives *in addition to* the sitemap
-and merging on canonical permalink, then a multi-hour backfill.
-**Known limitation, not yet implemented.**
+Two things that fix surfaced:
+
+- `_is_post_url()` matched any date-shaped URL regardless of host, so scraping
+  archive bodies pulled in an unrelated `blogs.msdn.com` permalink. It now
+  requires the blog's own host.
+- **Photos for 249 pre-2009 posts are permanently gone.** They lived on MSN
+  Spaces / Windows Live Spaces (`storage.msn.com`, `storage.live.com`), retired
+  by Microsoft in 2011; the URLs 404 at the source. Text is intact and those
+  pages render with a "NO PHOTOGRAPHS" stamp. A further 106 pre-2009 posts never
+  had images.
 
 ### Operational hazard fixed: multiple project copies
 
@@ -394,12 +405,8 @@ corrections are made in `scripts/assign_topics.py`.
 
 ## Known gaps / next steps
 
-1. **699 pre-2013 posts are not ingested** (measured, see above). The sitemap
-   caps at ~1,000 URLs, hiding nine years of earlier posts that still exist on
-   the site. Fix: always walk year/month archives and merge with sitemap
-   results, instead of using the archive walk only as a fallback. This is the
-   largest open item — the difference between "the whole blog" and "the blog
-   since August 2013".
+1. ~~699 pre-2013 posts are not ingested~~ — **done**, see "Ingestion reality
+   check" above. The book now covers the whole blog, 2004–2026.
 2. **Curate mode.** No in-app editing of titles, dates, chapters, or covers;
    chapter changes mean editing a Python dict and re-running a script.
 3. **Map view.** Never started; `Location`/`EntryLocation` tables exist unused.

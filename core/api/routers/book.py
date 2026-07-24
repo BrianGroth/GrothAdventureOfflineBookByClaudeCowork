@@ -24,13 +24,14 @@ TOPIC_META = {
     "topic-seasons": ("🍂", "Tulips, fall colors, and first frosts — the turning year", 5),
     "topic-piper": ("🐾", "Sam, Ripley, Milo, Busby and Piper — plus highland cows, wild horses and neighbourhood deer", 6),
     "topic-art": ("🎨", "Murals, sculptures, gable stones, museums, satellites, and things worth a second look", 7),
-    "topic-transport": ("🚲", "The curious ways the world gets around", 8),
-    "topic-europe": ("🏰", "City breaks and road trips across the continent", 9),
-    "topic-japan": ("🗾", "Two trips east: Tokyo, Kyoto, Osaka, Nara & Mt. Fuji", 10),
-    "topic-downunder": ("🦘", "Australia, New Zealand, Singapore, Dubai, Israel & the Moroccan Sahara", 11),
-    "topic-america": ("🗽", "Across the States: New York, Chicago, Vegas, Minnesota lakes & mountain snow", 12),
-    "topic-sunshine": ("🏝️", "Jersey, Tenerife, Malta & Turkey — warm light and open water", 13),
-    "topic-celebrations": ("🎉", "Anniversaries, holidays, and moments worth marking", 14),
+    "topic-work": ("💼", "Twenty years of building things — Windows Live, a patent, satellites, and every gadget along the way", 8),
+    "topic-transport": ("🚲", "The curious ways the world gets around", 9),
+    "topic-europe": ("🏰", "City breaks and road trips across the continent", 10),
+    "topic-japan": ("🗾", "Two trips east: Tokyo, Kyoto, Osaka, Nara & Mt. Fuji", 11),
+    "topic-downunder": ("🦘", "Australia, New Zealand, Singapore, Dubai, Israel & the Moroccan Sahara", 12),
+    "topic-america": ("🗽", "Across the States: New York, Chicago, Vegas, Minnesota lakes & mountain snow", 13),
+    "topic-sunshine": ("🏝️", "Jersey, Tenerife, Malta & Turkey — warm light and open water", 14),
+    "topic-celebrations": ("🎉", "Anniversaries, holidays, and moments worth marking", 15),
 }
 
 # Entries synced after the last curation run land here so the book never breaks.

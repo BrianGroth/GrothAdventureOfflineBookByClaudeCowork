@@ -5,16 +5,22 @@ A local-first archive of [grothadventures.com](https://grothadventures.com) pres
 post — with polaroid photos on the left page and the story on the right. Everything
 (posts, photos, search) is stored on your own PC and works completely offline once synced.
 
-The full archive is **999 posts and 3,077 photos spanning 2013–2026** — one page per post.
+The full archive is **1,698 posts and 3,752 photos spanning December 2004 – May 2026**
+— every entry ever posted, one page per post.
 
 The book has two tables of contents:
 
-- **By Chapter** — twelve topics: The Bay Area Years 🌉, Life in the Lowlands 🌷,
-  Through the Seasons 🍂, Piper & Friends 🐾, Art & Curiosities 🎨,
-  Planes, Trains & Bicycles 🚲, European Escapes 🏰, Adventures in Japan 🗾,
-  Farther Afield 🦘, American Adventures 🗽, Sunshine Getaways 🏝️,
-  Celebrations & Milestones 🎉
+- **By Chapter** — fifteen topics, starting with the four places called home:
+  The Seattle Years 🚤, The London Years 🎡, The Bay Area Years 🌉,
+  Life in the Lowlands 🌷 — then Through the Seasons 🍂, Dogs of the House 🐾,
+  Art & Curiosities 🎨, Work & Technology 💼, Planes, Trains & Bicycles 🚲,
+  European Escapes 🏰, Adventures in Japan 🗾, Farther Afield 🦘,
+  American Adventures 🗽, Sunshine Getaways 🏝️, Celebrations & Milestones 🎉
 - **By Date** — chronological, grouped by year and month, with page numbers
+
+> Some posts from before 2009 show a "NO PHOTOGRAPHS" stamp. Those photos were
+> hosted on Microsoft's MSN/Live Spaces, which shut down in 2011 — the images no
+> longer exist anywhere online. The writing is preserved in full.
 
 ---
 
@@ -187,9 +193,9 @@ copied** (existing ones are skipped) and the small data files are refreshed. You
 Without `--output` it writes to `data\exports\static-book`. Copy the folder to a USB
 stick with File Explorer, or export straight to the stick's drive letter as above.
 
-**Size:** the full book folder is about **5.7 GB** (999 stories, 3,077 photos), so use
-a 8 GB or larger stick. A first export takes several minutes; refreshing an existing
-copy takes under 10 seconds.
+**Size:** the full book folder is about **5.8 GB** (1,698 stories, 3,752 photos), so
+use an 8 GB or larger stick. A first export takes several minutes; refreshing an
+existing copy takes under 10 seconds.
 
 ## Reading the book
 

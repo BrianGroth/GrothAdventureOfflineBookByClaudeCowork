@@ -59,7 +59,21 @@ Measured: 999 stories + 3,077 photos = **5.7 GB**; first export several minutes,
 subsequent refreshes **~9 seconds** (photos are content-addressed, so only new
 ones copy).
 
-### 0.3 Corrections to §2.7 — the archive is smaller *and* incomplete
+### 0.3 Corrections to §2.7 — the sitemap cap, and how it was closed
+
+> ✅ **RESOLVED (July 25, 2026).** The gap described below has been fixed and
+> backfilled. `sync --deep` now walks `/YYYY/MM/` date archives and unions them
+> with the sitemap; the 699 missing posts were ingested. **The book now holds
+> all 1,698 posts, December 2, 2004 → May 27, 2026** — 100% of the blog, matching
+> this PRD's original §2.7 estimate exactly. The analysis below is kept because
+> it explains *why* a sitemap-only crawl silently under-collects.
+>
+> One consequence is permanent and worth recording: **photos on 249 pre-2009
+> posts are unrecoverable.** They were hosted on MSN Spaces / Windows Live
+> Spaces (`storage.msn.com`, `storage.live.com`), which Microsoft retired in
+> 2011; the URLs now return 404 from the source. The text of every post
+> survives, and the book renders those pages with a "NO PHOTOGRAPHS" stamp.
+> A further 106 pre-2009 posts never had images at all.
 
 The spec estimated **~1,700 posts spanning December 2004 – May 2026**. Measured
 against the live site on July 24, 2026:
@@ -161,14 +175,26 @@ different archives.
 
 | Metric | Value |
 |---|---|
-| Posts (pages in the book) | 999 |
-| Photos | 3,077 |
-| Date range | Aug 24 2013 – May 27 2026 |
-| **Blog coverage** | **~59% (999 of ~1,698) — see §0.3** |
-| Local archive (`data/`, gitignored) | ~11.5 GB |
-| Exported book folder | ~5.7 GB |
-| Chapters | 12 |
-| Sync / export correctness | 999/999 sitemap posts present; `errors: 0` |
+| Posts (pages in the book) | **1,698** |
+| Photos | **3,752** |
+| Date range | **Dec 2 2004 – May 27 2026** |
+| **Blog coverage** | **100% (1,698 of 1,698)** |
+| Posts with no photographs | 396 (355 of them pre-2009; see §0.3) |
+| Local archive (`data/`, gitignored) | ~12 GB |
+| Exported book folder | ~5.8 GB |
+| Chapters | **15** |
+| Sync / export correctness | 1,698 discovered, 1,698 ingested, `errors: 0` |
+
+The 15 chapters, in book order: The Seattle Years 🚤 (122), The London Years 🎡
+(155), The Bay Area Years 🌉 (122), Life in the Lowlands 🌷 (238), Through the
+Seasons 🍂 (64), Dogs of the House 🐾 (300), Art & Curiosities 🎨 (159), Work &
+Technology 💼 (58), Planes/Trains & Bicycles 🚲 (120), European Escapes 🏰 (153),
+Adventures in Japan 🗾 (18), Farther Afield 🦘 (34), American Adventures 🗽 (89),
+Sunshine Getaways 🏝️ (7), Celebrations & Milestones 🎉 (59).
+
+Chapter rules can be **era-windowed** (`ERAS` in `scripts/assign_topics.py`), so
+living somewhere outranks visiting it: London in 2007 files under The London
+Years, London in 2024 under European Escapes.
 
 ---
 
