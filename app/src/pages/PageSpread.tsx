@@ -16,14 +16,59 @@ interface PageSpreadProps {
 const FLIP_MS = 560
 const FLIP_SWAP_MS = 250
 
-/** Photos live on the verso page; drop them (and stray iframes) from the prose. */
+/** Text that only made sense on the live blog, not in a printed book. */
+const DEAD_LINK_TEXT = /^(view slide show|download all|view album|slideshow)$/i
+
+/**
+ * Prepare a post's HTML for the story page.
+ *
+ * Photos live on the verso page, so images come out here. Older posts
+ * (2013–2015) were written in Windows Live Writer, which embedded a table
+ * linking to a SkyDrive album — long dead, and it repeats the post title
+ * followed by "VIEW SLIDE SHOW / DOWNLOAD ALL". Those blocks come out too.
+ *
+ * Uses DOM parsing rather than regex because the embeds nest tables inside
+ * divs, which regex cannot match reliably. Falls back to the text as-is if
+ * parsing fails for any reason.
+ */
 function stripMediaFromHtml(html: string): string {
-  return html
-    .replace(/<figure\b[^>]*>[\s\S]*?<\/figure>/gi, '')
-    .replace(/<img\b[^>]*\/?>/gi, '')
-    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
-    .replace(/<a\b[^>]*>\s*<\/a>/gi, '')
-    .replace(/(\s*<p>\s*<\/p>\s*){1,}/gi, '')
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+
+    doc.querySelectorAll(
+      'img, figure, iframe, script, style, .wlWriterEditableSmartContent',
+    ).forEach((el) => el.remove())
+
+    // Dead album links, plus any table built around them
+    doc.querySelectorAll('a').forEach((a) => {
+      const label = (a.textContent || '').trim()
+      const href = a.getAttribute('href') || ''
+      if (DEAD_LINK_TEXT.test(label) || /skydrive|photos\.live\.com/i.test(href)) {
+        a.closest('table')?.remove()
+        a.remove()
+      }
+    })
+
+    // Anything left that is now empty (link wrappers, blank paragraphs)
+    doc.querySelectorAll('a, p, div, span').forEach((el) => {
+      if (!el.querySelector('img, iframe') && !(el.textContent || '').trim()) {
+        el.remove()
+      }
+    })
+
+    // Posts arrive wrapped in <div class="content">. Unwrap it so paragraphs
+    // are direct children — the drop cap targets the first one.
+    for (let i = 0; i < 3; i++) {
+      const only = doc.body.children
+      if (only.length === 1 && only[0].tagName === 'DIV') {
+        doc.body.innerHTML = only[0].innerHTML
+      } else break
+    }
+
+    return doc.body.innerHTML.trim()
+  } catch {
+    return html
+  }
 }
 
 const TILT = [-2.2, 1.6, -1.2, 2.1, -1.7, 0.9, -0.6, 1.3]
@@ -179,7 +224,7 @@ export default function PageSpread({ onSearch }: PageSpreadProps) {
             <div className="running-head">
               <span>Groth Adventures</span>
             </div>
-            <div className="page-inner photo-page">
+            <div className={`page-inner photo-page${photos.length === 1 ? ' single' : ''}`}>
               {detailError && (
                 <p className="page-error">Could not load this story ({detailError}).</p>
               )}

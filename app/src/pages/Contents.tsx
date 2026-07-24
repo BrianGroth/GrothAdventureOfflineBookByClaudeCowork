@@ -6,6 +6,17 @@ interface ContentsProps {
   onSearch: () => void
 }
 
+const NUMBER_WORDS = [
+  'No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+  'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+  'Seventeen', 'Eighteen', 'Nineteen', 'Twenty',
+]
+
+/** Spelled-out count — reads better than a digit in the book's voice. */
+function countWord(n: number): string {
+  return NUMBER_WORDS[n] ?? String(n)
+}
+
 export default function Contents({ onSearch }: ContentsProps) {
   const { loading, error, topics, entries, topicEntries, pageNo } = useBook()
   const [params, setParams] = useSearchParams()
@@ -137,7 +148,9 @@ export default function Contents({ onSearch }: ContentsProps) {
               <header className="toc-header">
                 <h2 className="toc-heading">Contents</h2>
                 <p className="toc-subheading">
-                  {view === 'chapters' ? 'Ten chapters of family adventures' : 'Every page, in the order it happened'}
+                  {view === 'chapters'
+                    ? `${countWord(visibleTopics.length)} chapters of family adventures`
+                    : 'Every page, in the order it happened'}
                 </p>
               </header>
 

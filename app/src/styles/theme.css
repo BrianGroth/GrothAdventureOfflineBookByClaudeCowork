@@ -468,6 +468,30 @@ kbd {
 .page-inner::-webkit-scrollbar-thumb { background: var(--brown-light); border-radius: 3px; }
 .page-inner::-webkit-scrollbar-track { background: transparent; }
 
+/* Paper-coloured fades top and bottom, so scrolling text dissolves into the
+   page instead of colliding with the running head and the folio. */
+.page::before,
+.page::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2.6rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.page::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--paper) 45%, transparent);
+}
+
+.page::after {
+  bottom: 0;
+  height: 2.9rem;
+  background: linear-gradient(to top, var(--paper) 45%, transparent);
+}
+
 .running-head {
   position: absolute;
   top: 0;
@@ -488,7 +512,11 @@ kbd {
   z-index: 2;
 }
 
-.recto .running-head { justify-content: flex-end; }
+/* Extra right inset so the chapter name never runs under the ribbon */
+.recto .running-head {
+  justify-content: flex-end;
+  padding-right: calc(var(--page-pad) + 2.4rem);
+}
 
 .folio {
   position: absolute;
@@ -510,7 +538,7 @@ kbd {
 .ribbon {
   position: absolute;
   top: 2px;
-  right: 16%;
+  right: 7%;
   width: 22px;
   height: 76px;
   background: linear-gradient(90deg, #8f2323, var(--ribbon-red) 45%, #7c1e1e);
@@ -710,7 +738,11 @@ kbd {
   flex-direction: column;
   align-items: center;
   gap: 1.1rem;
+  min-height: 100%;
 }
+
+/* A lone photograph sits centred on the page rather than stranded at the top */
+.photo-page.single { justify-content: center; }
 
 .polaroid {
   background: #fff;
