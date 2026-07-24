@@ -196,6 +196,12 @@ def status(
 def sync(
     source: str = typer.Option(..., "--source", help="Source name to sync"),
     full: bool = typer.Option(False, "--full", help="Full re-sync (ignore last cursor)"),
+    deep: bool = typer.Option(
+        False,
+        "--deep",
+        help="Also walk /YYYY/MM/ date archives. Needed to reach posts older than "
+             "the sitemap's ~1000-URL cap. Slower discovery; run once for a backfill.",
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Fetch and parse but don't write to DB"),
     max_posts: Optional[int] = typer.Option(None, "--max-posts", help="Limit number of posts"),
     since: Optional[str] = typer.Option(None, "--since", help="Only sync posts since date (YYYY-MM-DD)"),
@@ -252,6 +258,7 @@ def sync(
             since=since,
             no_media=no_media,
             concurrency=concurrency,
+            deep=deep,
         )
 
         import asyncio

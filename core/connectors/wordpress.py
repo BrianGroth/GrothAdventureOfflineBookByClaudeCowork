@@ -230,6 +230,7 @@ class WordPressConnector:
         since: Optional[str] = None,
         no_media: bool = False,
         concurrency: int = 3,
+        deep: bool = False,
     ):
         self.cfg = cfg
         self.source = source_model
@@ -241,6 +242,7 @@ class WordPressConnector:
         self.since = since
         self.no_media = no_media
         self.concurrency = concurrency
+        self.deep = deep
         self.base_url = source_model.base_url or source_config.get("base_url", "")
         self.rate_limiter = RateLimiter(
             min_delay=source_config.get("rate_limit_min", 1.5),
@@ -318,10 +320,33 @@ class WordPressConnector:
         except Exception as e:
             self._log(f"Sitemap fetch failed: {e}")
 
+        sitemap_count = len(urls)
+
         if not urls:
             # Fallback: archive walk via WordPress archive pages
             self._log("Falling back to archive walk...")
             urls = await self._walk_archives(client)
+
+        # WordPress.com caps sitemap.xml at ~1000 URLs, so on a long-running
+        # blog the sitemap silently hides the oldest posts. A deep run walks
+        # the date archives as well and unions the results, which is the only
+        # way to reach anything older than that cut-off.
+        if self.deep:
+            console.print(
+                f"  [dim]Sitemap gave {sitemap_count} posts; walking date archives for older ones…[/dim]"
+            )
+            archive_urls = await self._walk_date_archives(client)
+            seen = {_source_entry_id(u) for u in urls}
+            added = 0
+            for u in archive_urls:
+                key = _source_entry_id(u)
+                if key not in seen:
+                    seen.add(key)
+                    urls.append(u)
+                    added += 1
+            console.print(
+                f"  [dim]Date archives added {added} posts the sitemap never listed[/dim]"
+            )
 
         # Filter by date if --since provided
         if self.since:
@@ -332,8 +357,20 @@ class WordPressConnector:
         return urls
 
     def _is_post_url(self, url: str) -> bool:
-        """Check if URL looks like a WordPress post (has /YYYY/MM/DD/ pattern)."""
-        return bool(PERMALINK_DATE_RE.search(url))
+        """Check if a URL is a post on *this* blog.
+
+        Two conditions: the /YYYY/MM/DD/slug/ permalink shape, and the same
+        host as the configured base URL. The host check matters when scraping
+        archive pages, whose bodies link out to other sites that happen to use
+        date-based URLs too (e.g. old blogs.msdn.com/…/2004/12/02/273655.aspx).
+        """
+        if not PERMALINK_DATE_RE.search(url):
+            return False
+
+        def host(u: str) -> str:
+            return urlparse(u).netloc.lower().removeprefix("www.")
+
+        return host(url) == host(self.base_url)
 
     def _url_date_after(self, url: str, since: str) -> bool:
         """Check if a URL's date is on or after the given date."""
@@ -342,8 +379,83 @@ class WordPressConnector:
             return True  # Include undated posts
         return date >= since
 
+    async def _walk_date_archives(self, client: httpx.AsyncClient) -> list[str]:
+        """Walk /YYYY/MM/ archive pages to find posts the sitemap omits.
+
+        WordPress.com serves a date archive for every month a blog has posts,
+        each paginated at /YYYY/MM/page/N/. Walking these reaches the whole
+        history regardless of the sitemap's ~1000-URL cap.
+
+        Months with no posts return quickly (a 404 or a page with no post
+        links), so the cost is roughly one request per month of the blog's
+        life plus one per extra page of a busy month.
+        """
+        start_year = int(self.source_config.get("archive_start_year", 2004))
+        end_year = datetime.now().year
+        max_pages_per_month = int(self.source_config.get("archive_max_pages", 10))
+
+        found: list[str] = []
+        seen: set[str] = set()
+        empty_months_in_a_row = 0
+
+        for year in range(start_year, end_year + 1):
+            year_total = 0
+            for month in range(1, 13):
+                base = f"{self.base_url.rstrip('/')}/{year}/{month:02d}/"
+                month_found = 0
+                for page in range(1, max_pages_per_month + 1):
+                    url = base if page == 1 else f"{base}page/{page}/"
+                    try:
+                        resp = await self._fetch(client, url)
+                    except RuntimeError:
+                        raise
+                    except Exception as e:
+                        self._log(f"Archive {url} failed: {e}")
+                        break
+                    if resp.status_code != 200:
+                        break
+
+                    soup = BeautifulSoup(resp.text, "lxml")
+                    new_on_page = 0
+                    for a_tag in soup.find_all("a", href=True):
+                        # Archive pages link to posts with comment anchors
+                        # (…/slug/#respond); strip fragment and query before
+                        # matching, since the permalink pattern is $-anchored.
+                        full_url = urljoin(self.base_url, a_tag["href"])
+                        full_url = full_url.split("#")[0].split("?")[0]
+                        if not self._is_post_url(full_url):
+                            continue
+                        # Only accept posts actually dated to this month —
+                        # archive pages also link to recent/related posts.
+                        m = PERMALINK_DATE_RE.search(full_url)
+                        if not m or int(m.group(1)) != year or int(m.group(2)) != month:
+                            continue
+                        canon = _source_entry_id(full_url)
+                        if canon in seen:
+                            continue
+                        seen.add(canon)
+                        found.append(full_url)
+                        new_on_page += 1
+
+                    month_found += new_on_page
+                    if new_on_page == 0:
+                        break
+
+                year_total += month_found
+                empty_months_in_a_row = 0 if month_found else empty_months_in_a_row + 1
+
+            if year_total:
+                self._log(f"  {year}: {year_total} posts in date archives")
+            # A blog that has been quiet for two full years before its first
+            # post is unlikely; stop early only if we have found nothing at all.
+            if not found and empty_months_in_a_row >= 24:
+                self._log("No posts found in first 24 months — stopping archive walk")
+                break
+
+        return found
+
     async def _walk_archives(self, client: httpx.AsyncClient) -> list[str]:
-        """Walk WordPress monthly archive pages to collect post URLs."""
+        """Walk WordPress paginated index pages to collect post URLs."""
         urls: list[str] = []
         page = 1
         max_pages = 200
