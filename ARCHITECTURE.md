@@ -1,4 +1,99 @@
-# Groth Adventures Offline Scrapbook — Rearchitecture Plan
+# Groth Adventures Offline Scrapbook — Architecture
+
+> **Status: built and in use (July 2026).** The plan below was the original
+> design; this section records what actually shipped and where it diverged.
+> See also `PRD.md` §0 for the as-built addendum.
+
+## As-built summary
+
+| Area | Planned | Shipped |
+|---|---|---|
+| Presentation | Home + Timeline + Entry pages, "scrapbook" styling | **A book**: leather cover → two-page spreads, one spread per post, 3D page-turn |
+| Table of contents | By year; by trip/topic | **Two TOCs** — By Chapter (12 curated topics) and By Date (year → month), both with page numbers |
+| Navigation | Prev/next chronological | Prev/next **by date** (`←`/`→`) *and* **within chapter** (`[`/`]`), plus return-to-contents and auto-bookmark |
+| Distribution | Local server only | Local server **plus a static export** that runs from a folder with no server, no install, no internet |
+| Operation | CLI commands | Two double-clickable scripts: `InitialRun.cmd`, `Update.cmd` |
+| Archive size | ~1,700 posts est. from 2004 | **999 posts, 3,077 photos, Aug 2013 – May 2026** (see "Ingestion reality check") |
+
+### What the book is
+
+One blog post = one two-page spread. Photographs sit on the left (verso) page as
+tilted polaroids; the story sits on the right (recto) with a drop cap, running
+heads, and folios. Chapters are curated topics stored as tags, so a post's
+"chapter thread" is a second axis of navigation independent of the calendar.
+
+### Dual-mode frontend
+
+The same build serves two very different delivery modes:
+
+1. **Served mode** — `scrapbook serve` on `localhost:8420`; the app calls
+   `/api/book/toc`, `/api/entries/{id}`, `/api/search`.
+2. **Static mode** — `scrapbook export --format static-book` writes a folder
+   whose `index.html` opens directly from disk (`file://`).
+
+Static mode drove three architectural constraints:
+
+- **Single-file build.** Browsers refuse to load external module scripts on
+  `file://`, so `vite-plugin-singlefile` inlines all JS, CSS, and fonts into one
+  `index.html`. Fonts therefore live in `app/src/fonts/` (bundled), not
+  `app/public/`.
+- **Hash routing.** `HashRouter` (`#/page/5`) needs no server-side URL rewriting.
+- **Scripts, not fetch.** `fetch()` is blocked on `file://`, so the exporter
+  writes data as classic `<script>` files that assign to globals: `boot.js`
+  (flag + full TOC), `book-data/entries/<id>.js` (one per post, loaded on
+  demand), and `book-data/search.js` (text index for in-browser search).
+
+`app/src/book/staticData.ts` detects the mode; `BookContext` and `SearchOverlay`
+branch on it. Everything else in the UI is mode-agnostic.
+
+### Incremental everywhere
+
+Both the sync and the export are incremental, which is what makes the monthly
+routine cheap:
+
+- **Sync** compares the blog's post list against local `source_entry_id`s and
+  fetches only what's new.
+- **Export** names photos by content hash, so re-exporting into an existing book
+  folder copies only new images. Measured: full export several minutes, refresh
+  **~9 seconds**.
+
+### Ingestion reality check
+
+The PRD estimated ~1,700 posts back to December 2004 from the site's archive
+widget. Measured against the live site:
+
+- `sitemap.xml` is a **single flat sitemap containing 2,329 URLs**, of which
+  **999 are posts** (the rest are `wp-content/uploads` media). All 999 are
+  archived locally — verified zero missing.
+- WordPress.com appears to **cap the sitemap at 1,000 URLs**, so it exposes only
+  the most recent posts. The oldest listed post is **2013-08-24**.
+- **Posts older than that still exist** — `/2004/`, `/2008/`, `/2011/`, `/2012/`
+  archive pages all return real posts — but they are not discoverable via the
+  sitemap.
+
+The connector only falls back to `_walk_archives()` when the sitemap yields
+*nothing*, so today those older posts are never discovered. A read-only crawl of
+monthly archives on 2026-07-24 measured the gap: **699 posts missing**, from
+`2004/12/02` to `2013/08/21`, peaking at 132 posts in 2007.
+
+**999 ingested + 699 missing = 1,698**, matching the PRD's independent estimate
+of ~1,698 posts almost exactly. The book therefore holds roughly **59% of the
+blog** — everything since August 2013, but nothing from the nine years before it.
+
+Closing the gap means walking year/month archives *in addition to* the sitemap
+and merging on canonical permalink, then a multi-hour backfill.
+**Known limitation, not yet implemented.**
+
+### Operational hazard fixed: multiple project copies
+
+`pip install -e .` binds the `scrapbook` command to whichever copy of the repo
+installed it, and `core/config.py` resolves the data directory relative to that
+installed code. With two clones on one machine, CLI steps and script steps could
+act on different archives. Both `.cmd` files now set `SCRAPBOOK_DATA_DIR` to
+their own folder and invoke `python -m core.cli` (local code), and
+`scripts/assign_topics.py` honours the same variable.
+
+---
 
 ## Vision
 Build a **local-first scrapbook application** that periodically imports content from `grothadventures.com`, stores it in a durable local archive, and presents it as a rich, browsable offline experience with:
@@ -107,21 +202,40 @@ Add FTS virtual table over `Entry(title, body_text)`.
 
 ## Filesystem layout
 
+As built:
+
 ```text
-/adventures-scrapbook
-  /app                 # frontend
-  /core                # CLI + ingestion + models (+ optional local API)
-  /data
-    /db
-      scrapbook.sqlite
-    /raw               # raw downloaded payloads (json/html)
-    /media             # content-addressed media store
-    /thumbnails
-    /exports
-  /config
-    sources.yaml
+/GrothAdventureOfflineBookByClaudeCowork
+  InitialRun.cmd       # double-click: full first build (install → sync → chapters → build → export)
+  Update.cmd           # double-click: new posts → chapters → refresh book folder
+  run.cmd              # status + serve
+  /app                 # React frontend (the book)
+    /src
+      /book            # BookContext.tsx (state, nav), staticData.ts (file:// mode)
+      /pages           # Cover.tsx, Contents.tsx, PageSpread.tsx
+      /components      # SearchOverlay.tsx, PhotoLightbox.tsx
+      /fonts           # bundled woff2 — inlined into the single-file build
+      /styles/theme.css
+    /dist              # build output: ONE self-contained index.html
+  /core
+    cli.py             # Typer CLI
+    config.py          # paths; honours SCRAPBOOK_DATA_DIR
+    static_export.py   # writes the standalone book folder
+    /api               # FastAPI app + routers (book.py serves the TOC)
+    /connectors        # wordpress.py
+    /db                # models + migrations
+  /data                # NOT in git — the archive itself (~11.5 GB)
+    /db/scrapbook.sqlite
+    /raw               # immutable HTML snapshots
+    /media             # content-addressed photo store
+    /exports/static-book   # the shareable book folder (~5.7 GB)
+  /config/sources.yaml
   /scripts
+    assign_topics.py   # chapter curation (curated slugs + keyword rules)
+    monthly_update.ps1|sh
 ```
+
+Thumbnails were never needed — the UI scales full images and lazy-loads them.
 
 ---
 
@@ -169,42 +283,60 @@ Yes — everything can run from your local PC.
 
 ## UX blueprint (offline scrapbook)
 
-### Main surfaces
-1. **Home / Table of Contents**
-   - By Year
-   - By Trip/Collection
-   - By Topic/People/Places
-2. **Timeline**
-   - chronological stream with cover photos
-3. **Entry page**
-   - story text + image gallery + metadata/tags
+> **Superseded by the book UI — kept for historical context.** The Home /
+> Timeline / Entry / Search pages below were built, then replaced. What shipped
+> is described under "As-built summary" above and in the surfaces list that
+> follows this block.
+
+### Original main surfaces
+1. **Home / Table of Contents** — by year, trip/collection, topic/people/places
+2. **Timeline** — chronological stream with cover photos
+3. **Entry page** — story text + image gallery + metadata/tags
 4. **Map view** (optional in v1, ideal in v2)
-5. **Search page**
-   - text search + faceted filters
-6. **Curate mode**
-   - edit title/date
-   - add/remove tags
-   - reorder media
-   - define cover image
+5. **Search page** — text search + faceted filters
+6. **Curate mode** — edit title/date, tags, media order, cover image
+
+### Shipped surfaces (the book)
+1. **Cover** (`/`) — closed book; opens to contents, or resumes at the
+   auto-saved bookmark.
+2. **Contents** (`/contents`) — one spread with index tabs switching between
+   **By Chapter** and **By Date**; chapter/year list on the verso, entries with
+   dotted leaders and page numbers on the recto.
+3. **Page spread** (`/page/:id`) — photos verso, story recto; edge zones and
+   arrow keys turn pages by date; `[`/`]` follow the chapter thread; `C`/`Esc`
+   return to contents.
+4. **Search overlay** — `/` or `Ctrl+K`, results cite page numbers.
+5. **Lightbox** — click any photo; click it again (or `Esc`) to close.
+
+Curate mode and map view remain unbuilt. Chapter curation is currently done by
+editing `scripts/assign_topics.py` rather than in the UI.
 
 ### Visual style guidance
-- Parchment/polaroid aesthetic.
-- Large photography; serif typography.
-- “Cabinet” metaphors (collections, chapters, trips).
-- Keep keyboard nav and slideshow controls.
+- Parchment/polaroid aesthetic on a dark leather-and-desk backdrop.
+- Large photography; serif typography (Playfair Display / Lora / Inter).
+- Book metaphors throughout: folios, running heads, index tabs, ribbon bookmark.
+- Keyboard navigation everywhere; `prefers-reduced-motion` disables page-turn
+  animation.
+- Under 920px the spread folds into a single scrolling page with fixed controls.
 
 ---
 
-## Operations workflow (your every-few-month routine)
+## Operations workflow (the every-few-month routine)
 
-1. `scrapbook sync --source grothadventures`
-2. `scrapbook review` (open app in curate queue)
-3. Approve/adjust tags and covers.
-4. `scrapbook export --format bundle`
-5. Backup `/data` to external drive/cloud.
+As built, this is one double-click — `Update.cmd` (optionally with a destination
+folder) runs:
 
-Automate with one script:
-- `scripts/monthly_update.(ps1|sh)`
+1. `python -m core.cli sync --source grothadventures` — new posts only
+2. `python scripts/assign_topics.py` — re-file chapters; prints anything that
+   needs a hand-assigned chapter
+3. `python -m core.cli export --format static-book` — refresh the book folder
+   (new photos only, ~9s)
+
+`InitialRun.cmd` is the same flow plus dependency install, DB init, and the
+frontend build, for a machine starting from nothing.
+
+The original `scrapbook review` curate-queue step was never built; chapter
+corrections are made in `scripts/assign_topics.py`.
 
 ---
 
@@ -247,25 +379,30 @@ Automate with one script:
 
 ---
 
-## Definition of done for v1
+## Definition of done for v1 — scorecard
 
-- You can run one command and ingest latest site posts.
-- App works completely offline.
-- Table of contents by year + topic exists.
-- Entries include local-cached media.
-- You can manually curate metadata/tags.
-- You can export and back up a complete bundle.
+| Criterion | Status |
+|---|---|
+| One command ingests latest site posts | ✅ `Update.cmd` (double-click) |
+| App works completely offline | ✅ served **and** as a standalone folder |
+| Table of contents by year + topic | ✅ both, with page numbers |
+| Entries include local-cached media | ✅ 3,077 photos, content-addressed |
+| Manually curate metadata/tags | ⚠️ via `scripts/assign_topics.py`, no UI |
+| Export and back up a complete bundle | ✅ `--format bundle` and `--format static-book` |
 
 ---
 
-## Immediate next steps (what I would do first)
+## Known gaps / next steps
 
-1. Finalize stack choice:
-   - Python/Typer/React/SQLite (with optional local FastAPI)
-2. Scaffold project skeleton.
-3. Implement DB schema + migrations.
-4. Implement `grothadventures` connector with raw snapshot storage.
-5. Build minimal UI: TOC + Entry + Search.
-6. Add one-command sync and export scripts.
-
-If you want, I can execute this next by creating the actual skeleton and first connector in this repo.
+1. **699 pre-2013 posts are not ingested** (measured, see above). The sitemap
+   caps at ~1,000 URLs, hiding nine years of earlier posts that still exist on
+   the site. Fix: always walk year/month archives and merge with sitemap
+   results, instead of using the archive walk only as a fallback. This is the
+   largest open item — the difference between "the whole blog" and "the blog
+   since August 2013".
+2. **Curate mode.** No in-app editing of titles, dates, chapters, or covers;
+   chapter changes mean editing a Python dict and re-running a script.
+3. **Map view.** Never started; `Location`/`EntryLocation` tables exist unused.
+4. **Additional connectors** (photo libraries, scanned albums) — Phase 4, untouched.
+5. **Thumbnails.** Full-size images are served to the grid; fine at this scale,
+   but a derivative pipeline would cut the 5.7 GB export considerably.

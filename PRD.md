@@ -1,9 +1,174 @@
 # Groth Adventures Offline Scrapbook — Product Requirements Document
 
-**Status:** Draft v1.0 — implementation-ready
-**Date:** June 20, 2026
+**Status:** v1 **built and in daily use** (July 24, 2026). Original spec below is
+retained as written; §0 records what actually shipped and where the spec was
+wrong.
+**Date:** June 20, 2026 · **As-built addendum:** July 24, 2026
 **Author:** Product/Architecture (Claude, on behalf of Brian Groth)
 **Source documents:** `ARCHITECTURE.md` (stack decisions, final — not relitigated here); live reconnaissance of `grothadventures.com` performed June 20, 2026 (see citations inline)
+
+---
+
+## 0. As-Built Addendum (July 24, 2026)
+
+**Read this before trusting the sections below.** §§1–11 are the original
+pre-build specification. The product was built, then substantially redesigned
+during use. Where this section and a later section disagree, this one is correct.
+
+### 0.1 What changed most: it became a book, not a website
+
+The spec described a scrapbook *website* (Home, Timeline, Entry page, Search
+page — §6, §7). That was built and then replaced, because browsing it felt like
+scrolling a blog rather than turning pages. The shipped product is a **book**:
+
+- A closed leather **cover** opens the archive.
+- Each post is one **two-page spread** — photos as tilted polaroids on the
+  verso, story with a drop cap on the recto, plus running heads and folios.
+- **Two tables of contents**: *By Chapter* (12 curated topics) and *By Date*
+  (year → month), both listing page numbers with dotted leaders.
+- **Two navigation axes**: `←`/`→` turn pages chronologically; `[`/`]` follow
+  the current chapter's thread across years. `C`/`Esc` return to contents.
+- A **bookmark** is saved automatically; the cover offers "Resume".
+- Page turns animate as a 3D sheet fold, disabled under
+  `prefers-reduced-motion`.
+
+Curate mode (§8) and map view were **not** built. Chapter assignment happens in
+`scripts/assign_topics.py`, not in the UI.
+
+### 0.2 New capability not in the spec: the standalone book folder
+
+§9 anticipated a "static fallback" as a stretch goal. It shipped as a
+first-class feature and is now the primary way the archive is shared:
+
+```
+scrapbook export --format static-book --output E:\GrothBook
+```
+
+This writes a folder that opens by **double-clicking `index.html`** — no server,
+no Python, no internet, nothing installed. Full functionality: both TOCs, page
+turns, chapter threads, search, lightbox, bookmark.
+
+Making one build work both served and from `file://` forced three decisions:
+**single-file build** (all JS/CSS/fonts inlined, since `file://` blocks module
+scripts), **hash routing** (`#/page/5`, since there is no server to rewrite
+URLs), and **data as classic scripts** rather than `fetch()` (which `file://`
+blocks) — `boot.js` for the TOC, one file per entry, plus a text index for
+in-browser search.
+
+Measured: 999 stories + 3,077 photos = **5.7 GB**; first export several minutes,
+subsequent refreshes **~9 seconds** (photos are content-addressed, so only new
+ones copy).
+
+### 0.3 Corrections to §2.7 — the archive is smaller *and* incomplete
+
+The spec estimated **~1,700 posts spanning December 2004 – May 2026**. Measured
+against the live site on July 24, 2026:
+
+| Claim in spec | Measured reality |
+|---|---|
+| ~1,700 posts, from Dec 2004 | **999 posts ingested, from Aug 24 2013** |
+| Sitemap enumerates the archive | Sitemap is one flat file of **2,329 URLs**, only **999 of which are posts** (rest are `wp-content/uploads` media) |
+| — | WordPress.com appears to **cap the sitemap at ~1,000 URLs**, silently hiding everything older |
+
+**All 999 sitemap-listed posts are archived locally — verified zero missing.**
+
+However, **older posts still exist and are not ingested.** Year archives
+`/2004/`, `/2008/`, `/2011/`, `/2012/` all return real posts.
+
+This is an **implementation deviation from this PRD, not a spec gap**. Task 1.1
+(§10) required "Stage 0 discovery: robots.txt parse, sitemap.xml parse,
+**archive-index walk (back to 2004/12)**" and set the acceptance bar at "within a
+few percent of the ~1,698 reference figure". As built,
+`WordPressConnector._discover_posts()` calls `_walk_archives()` **only if the
+sitemap yields zero URLs** — so against a populated-but-truncated sitemap the
+archive walk never runs, and the acceptance criterion (999 ≉ 1,698) was never
+enforced.
+
+**Fix:** always walk year/month archives and union the results with the sitemap,
+deduplicating on canonical permalink.
+
+**Measured gap (read-only crawl of monthly archives, 2026-07-24):**
+
+| Year | Missing posts | | Year | Missing posts |
+|---|---|---|---|---|
+| 2004 | 7 (blog starts 2004-12-02) | | 2009 | 69 |
+| 2005 | 34 | | 2010 | 44 |
+| 2006 | 102 | | 2011 | 114 |
+| 2007 | 132 | | 2012 | 61 |
+| 2008 | 95 | | 2013 (to Aug 21) | 41 |
+
+**699 posts missing**, earliest `2004/12/02/brian-and-lories-children-the-bunny-and-the-dog`,
+latest `2013/08/21/sitting-on-top-of-the-world`.
+
+**999 ingested + 699 missing = 1,698 — exactly the "~1,698 reference figure"
+this PRD derived from the site's archive widget in §2.7.** The original
+reconnaissance was correct; the connector simply never looked past the sitemap.
+Note 699 is a *floor*: the crawl capped at 6 pages per month.
+
+**This is the single largest open gap in v1** — the difference between "the
+whole blog" and "the blog since August 2013". Roughly 41% of the archive, and
+the entire pre-Amsterdam era, is absent.
+
+### 0.4 Chapters (topics) — how they actually work
+
+The spec's tagging plan (§2 "Tagging", §3 `Tag`) produced weak results: keyword
+auto-tags mislabelled posts (e.g. a New York trip tagged *Skiing*). Chapters are
+therefore a separate, curated layer stored as `Tag(category='collection')` rows
+with slugs `topic-*`, applied in two passes by `scripts/assign_topics.py`:
+
+1. **Curated** — a hand-built map of *permalink slug → chapter* (`auto=0`).
+   Keyed by slug, not database id, so a rebuild on another machine reproduces
+   the same book.
+2. **Keyword scoring** — for everything else: whole-word matches, title worth 3×
+   body, ordered rules where a recurring series beats its location. Anything
+   with no signal lands in a visible "New Adventures" holding chapter and is
+   printed for hand-filing.
+
+The 12 chapters: The Bay Area Years, Life in the Lowlands, Through the Seasons,
+Piper & Friends, Art & Curiosities, Planes/Trains & Bicycles, European Escapes,
+Adventures in Japan, Farther Afield, American Adventures, Sunshine Getaways,
+Celebrations & Milestones.
+
+### 0.5 Operations — two double-clickable scripts
+
+Replacing the CLI-first routine in §4 for everyday use:
+
+- **`InitialRun.cmd`** — first build on a new machine: install deps → init DB →
+  sync → chapters → build frontend → export the book folder. Skips finished steps.
+- **`Update.cmd`** — monthly: new posts → re-file chapters → refresh book folder.
+
+Both accept an optional destination folder and pin themselves to their own
+copy of the project (`SCRAPBOOK_DATA_DIR` + `python -m core.cli`). That pinning
+exists because `pip install -e .` binds the `scrapbook` command to whichever
+clone installed it — with two clones on one machine, steps silently operated on
+different archives.
+
+### 0.6 Bugs found and fixed during the full-archive ingest
+
+- **Sync aborted on duplicate photos** — a post reusing one image twice violated
+  `entry_media`'s unique constraint (the session runs `autoflush=False`, so the
+  guard query could not see the pending row). Now de-duplicates per post, and a
+  single bad post rolls back and is skipped instead of killing an hours-long run.
+- **Dead Windows Live Writer embeds** — 23 posts (2013–2015) rendered their
+  title twice followed by "VIEW SLIDE SHOW / DOWNLOAD ALL" links to defunct
+  SkyDrive albums. Prose cleanup now parses the DOM instead of using regexes.
+- **Drop cap never rendered** — posts arrive wrapped in `<div class="content">`,
+  so no `<p>` was a direct child of the prose container.
+- **Stale `index.html`** — served without cache headers, so rebuilds appeared
+  not to take effect. Now `Cache-Control: no-cache`.
+
+### 0.7 Current state
+
+| Metric | Value |
+|---|---|
+| Posts (pages in the book) | 999 |
+| Photos | 3,077 |
+| Date range | Aug 24 2013 – May 27 2026 |
+| **Blog coverage** | **~59% (999 of ~1,698) — see §0.3** |
+| Local archive (`data/`, gitignored) | ~11.5 GB |
+| Exported book folder | ~5.7 GB |
+| Chapters | 12 |
+| Sync / export correctness | 999/999 sitemap posts present; `errors: 0` |
 
 ---
 
@@ -913,6 +1078,13 @@ The frontend never constructs `data/media/...` paths itself; all of `body_html`'
 
 ## 6. Frontend Specification
 
+> ⚠️ **Largely superseded — see §0.1.** The Home/Timeline/Entry/Search surfaces
+> specified here were built and then replaced by the book UI (cover → two-page
+> spreads, dual tables of contents, chapter threads). Still accurate: the React +
+> Vite stack, same-origin API under `/api/*`, and the offline-asset rules.
+> Now also true: the build is a **single self-contained `index.html`** using
+> **hash routing**, so the same bundle runs from `file://` (§0.2).
+
 React + Vite, single-page app served by the FastAPI process at `/` (static build) with the API under `/api/*`, both on `localhost:8420` — no CORS configuration needed since it's same-origin.
 
 ### 6.1 Home / Table of Contents
@@ -1006,6 +1178,16 @@ Everything renders from `/api/media/...` (same-origin, §5.5); no `<img>`, `<vid
 
 ## 7. UX & Visual Design Language
 
+> ⚠️ **Palette superseded — intent preserved.** The "physical artefact, not a
+> blog theme" intent below is exactly what shipped, but the green-on-parchment
+> system was replaced. The book uses **dark leather and desk tones** around
+> **warm parchment pages** (`--paper #f9f3e7`, `--ink #2c1810`, `--brown #8b6f4e`,
+> gold `#d9b566` for cover embossing), with per-chapter accent colours stored on
+> each chapter tag. Typography as specified: Playfair Display (display), Lora
+> (body), Inter (UI), all self-hosted — and now **inlined into the bundle** so
+> they survive the `file://` export. See `app/src/styles/theme.css` for the
+> authoritative tokens.
+
 ### 7.1 Design intent
 
 The product exists because a 20-year personal archive deserves to feel like something kept, not something rendered by a generic blog theme. The direction is a **physical scrapbook digitized**: parchment pages, photo corners, hand-labeled drawers — but restrained enough to stay legible and fast, not a kitsch skin. The green accent family (`#138127` for fills/icons, `#0D5C1C` for text — see §7.2) is deliberately inherited from the live site's own `theme-color` meta tag, so the offline archive reads as a continuation of the original blog's identity rather than a totally different product.
@@ -1069,6 +1251,13 @@ Single-PC target, but the window is resizable, so the layout uses fluid breakpoi
 
 ## 8. Curation Mode Spec
 
+> ❌ **Not built.** No in-app editing of titles, dates, tags, covers, or media
+> order exists, and there is no review queue. The one curation need that proved
+> real in practice — assigning each post to a book chapter — is met by editing
+> the `CURATED` map in `scripts/assign_topics.py` and re-running it (§0.4). The
+> API retains only `PATCH /api/entries/{id}/flag`. Everything below remains a
+> valid design for a future v2.
+
 ### 8.1 Entry edit flows
 
 Curate mode is a toggle (top-right switch, persisted in `localStorage`) that adds edit affordances to existing views rather than a separate editor page, so curation happens in-context:
@@ -1099,6 +1288,13 @@ This is the same mechanism as `source_changed_under_edit` above, generalized: an
 ---
 
 ## 9. Export / Vault Bundle
+
+> ℹ️ **Two export formats now exist.** `--format bundle` (this section) is the
+> zipped preservation artefact. `--format static-book` (§0.2) is the one used in
+> practice: a plain folder that opens by double-clicking `index.html` — no
+> server, no install, no internet — and refreshes incrementally in seconds.
+> The static book, not the bundle, is what gets handed to family or copied to a
+> USB stick.
 
 ### 9.1 Bundle directory structure
 
@@ -1151,6 +1347,13 @@ Per `ARCHITECTURE.md`'s operations workflow: `scrapbook export --format bundle` 
 ---
 
 ## 10. Phased Build Plan
+
+> ✅ **Phases 0–1 and most of 3 shipped; Phase 2 (curation) did not.** The one
+> task not fully satisfied is **1.1** — discovery skips the archive-index walk
+> whenever the sitemap returns anything, so the "~1,698 posts back to 2004/12"
+> acceptance criterion was never met (999 posts from 2013 were ingested instead).
+> See §0.3. Phase 3 shipped far beyond its brief: the styling pass became the
+> book redesign, and an unplanned static-book export (§0.2) was added.
 
 Each task below is sized to be a single focused Claude Code session (roughly: one coherent unit of code + tests, reviewable in one sitting). Dependencies are listed explicitly; tasks within a week with no listed dependency on each other can be done in any order or in parallel by separate sessions.
 
@@ -1222,6 +1425,25 @@ Each task below is sized to be a single focused Claude Code session (roughly: on
 ---
 
 ## 11. Open Questions & Decisions Needed
+
+> **Resolved during the build (July 2026):**
+> - **(1) Media volume** — answered by measurement, and it came in *far* under
+>   the 20–35 GB estimate: **3,077 photos, ~11.5 GB total archive** including raw
+>   HTML snapshots. No change to backup strategy needed; raw snapshots stay on.
+> - **(4) Theme/markup drift** — real, and it bit exactly as predicted. Posts
+>   from 2013–2015 carry Windows Live Writer embeds pointing at dead SkyDrive
+>   albums; handled in the frontend by DOM-based prose cleanup (§0.6), not by the
+>   extractor.
+> - **(5) Rate-limiting** — never triggered. A full 999-post backfill at
+>   1.5–3s/request completed with `errors: 0`.
+> - **Still open:** (2) comments, (3) offline map tiles, (6) signed manifest,
+>   (7) AI-edited image detection — all untouched, all still valid as written.
+>
+> **New open question — the biggest one:** whether to close the pre-2013
+> ingestion gap (§0.3). Doing so means implementing the archive walk that task
+> 1.1 originally called for, then a multi-hour backfill of 600+ posts and their
+> photos. Until then the book is "the blog since August 2013", not the whole
+> blog.
 
 These require a human decision (Brian's) before or during implementation; none of them block starting Phase 0, but several block specific later tasks as noted.
 
