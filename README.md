@@ -5,10 +5,15 @@ A local-first archive of [grothadventures.com](https://grothadventures.com) pres
 post — with polaroid photos on the left page and the story on the right. Everything
 (posts, photos, search) is stored on your own PC and works completely offline once synced.
 
+The full archive is **999 posts and 3,077 photos spanning 2013–2026** — one page per post.
+
 The book has two tables of contents:
 
-- **By Chapter** — ten curated topics (Life in the Lowlands, Adventures in Japan,
-  Piper & Friends, …)
+- **By Chapter** — twelve topics: The Bay Area Years 🌉, Life in the Lowlands 🌷,
+  Through the Seasons 🍂, Piper & Friends 🐾, Art & Curiosities 🎨,
+  Planes, Trains & Bicycles 🚲, European Escapes 🏰, Adventures in Japan 🗾,
+  Farther Afield 🦘, American Adventures 🗽, Sunshine Getaways 🏝️,
+  Celebrations & Milestones 🎉
 - **By Date** — chronological, grouped by year and month, with page numbers
 
 ---
@@ -133,12 +138,16 @@ python scripts/assign_topics.py              # re-apply chapters
 ```
 
 Sync is **incremental by default**: it compares the blog's post list against what's
-already in your local database and only downloads posts it doesn't have yet.
+already in your local database and only downloads posts it doesn't have yet. The
+export is incremental too — photos already in the book folder are skipped, so a
+refresh takes seconds rather than the ~1 hour a first build needs.
 
-The topics script prints any **new posts that don't have a chapter yet** — open
-[scripts/assign_topics.py](scripts/assign_topics.py), add each new entry id to
-`ASSIGNMENTS`, and run it again. (Until you do, new posts appear in a temporary
-"New Adventures" chapter, so the book keeps working either way.)
+New posts are filed into chapters automatically by keyword. To overrule a choice,
+open [scripts/assign_topics.py](scripts/assign_topics.py) and add the post's
+permalink slug to `CURATED` (e.g. `"a-day-in-porto": "topic-europe",`), then run
+it again. If a post has too little text to classify — a photo with no caption —
+the script lists it, ready to paste into `CURATED`, and parks it in a
+"New Adventures" chapter meanwhile so the book always works.
 
 There is also a one-shot script that does sync + reindex + export:
 `.\scripts\monthly_update.ps1`
@@ -165,6 +174,10 @@ copied** (existing ones are skipped) and the small data files are refreshed. You
 
 Without `--output` it writes to `data\exports\static-book`. Copy the folder to a USB
 stick with File Explorer, or export straight to the stick's drive letter as above.
+
+**Size:** the full book folder is about **5.7 GB** (999 stories, 3,077 photos), so use
+a 8 GB or larger stick. A first export takes several minutes; refreshing an existing
+copy takes under 10 seconds.
 
 ## Reading the book
 

@@ -28,56 +28,68 @@ from pathlib import Path
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "db" / "scrapbook.sqlite"
 
 # slug -> (label, emoji, tagline, color, order)
+# Chapter order roughly follows the life the archive tells: the Bay Area
+# years first, then the move to the Netherlands, then the wider world.
 TOPICS = {
+    "topic-bayarea": (
+        "The Bay Area Years", "🌉",
+        "Home in San Francisco and San Jose — city life, ballparks, and California road trips",
+        "#d97706", 1,
+    ),
     "topic-lowlands": (
         "Life in the Lowlands", "🌷",
         "Daily life, Dutch quirks, and discoveries around Amsterdam & Haarlem",
-        "#c96f2f", 1,
+        "#c96f2f", 2,
     ),
     "topic-seasons": (
         "Through the Seasons", "🍂",
-        "Tulips, fall colors, and first frosts — the turning year in the Netherlands",
-        "#b58900", 2,
+        "Tulips, fall colors, and first frosts — the turning year",
+        "#b58900", 3,
     ),
     "topic-piper": (
         "Piper & Friends", "🐾",
         "Poodles, highland cows, wild horses, and the neighborhood deer",
-        "#6b8c6b", 3,
+        "#6b8c6b", 4,
+    ),
+    "topic-art": (
+        "Art & Curiosities", "🎨",
+        "Murals, sculptures, gable stones, museums, satellites, and things worth a second look",
+        "#7c3aed", 5,
     ),
     "topic-transport": (
         "Planes, Trains & Bicycles", "🚲",
         "The curious ways the world gets around",
-        "#3d7ea6", 4,
+        "#3d7ea6", 6,
     ),
     "topic-europe": (
         "European Escapes", "🏰",
         "City breaks and road trips across the continent",
-        "#8e5ba6", 5,
+        "#8e5ba6", 7,
     ),
     "topic-japan": (
         "Adventures in Japan", "🗾",
         "Two trips east: Tokyo, Kyoto, Osaka, Nara & Mt. Fuji",
-        "#c0392b", 6,
+        "#c0392b", 8,
     ),
     "topic-downunder": (
-        "Down Under & Beyond", "🦘",
-        "Farther afield: Australia, New Zealand, Singapore, Dubai & the Middle East",
-        "#a8622d", 7,
+        "Farther Afield", "🦘",
+        "Australia, New Zealand, Singapore, Dubai, Israel & the Moroccan Sahara",
+        "#a8622d", 9,
     ),
     "topic-america": (
         "American Adventures", "🗽",
-        "North American visits: New York, Vegas, California & the Northwest",
-        "#34698a", 8,
+        "Across the States: New York, Chicago, Vegas, Minnesota lakes & mountain snow",
+        "#34698a", 10,
     ),
     "topic-sunshine": (
         "Sunshine Getaways", "🏝️",
         "Jersey, Tenerife, Malta & Turkey — warm light and open water",
-        "#16a085", 9,
+        "#16a085", 11,
     ),
     "topic-celebrations": (
         "Celebrations & Milestones", "🎉",
         "Anniversaries, holidays, and moments worth marking",
-        "#b3436c", 10,
+        "#b3436c", 12,
     ),
 }
 
@@ -195,71 +207,166 @@ CURATED = {
     "please-play": "topic-piper",
     "3000-cabernet-sauvignon-1998": "topic-celebrations",
     "we-have-a-3rd-pet": "topic-piper",
+    # ── Photo-only posts (no text to classify) from the 2013–2017 archive ──
+    # The 2016 puppy era: a long run of captionless dog photos.
+    "play-time": "topic-piper",
+    "finally-a-calm-moment": "topic-piper",
+    "first-bath": "topic-piper",
+    "never-enough-play-time": "topic-piper",
+    "getting-along": "topic-piper",
+    "beach-day-without-the-little-sister": "topic-piper",
+    "rough-life": "topic-piper",
+    "this-never-gets-old": "topic-piper",
+    "good-sit": "topic-piper",
+    "my-daughter-is-an-outstanding-student": "topic-piper",
+    "hi": "topic-piper",
+    "the-regal-boy": "topic-piper",
+    "walking": "topic-piper",
+    "almost-hidden": "topic-piper",
+    "waiting": "topic-piper",
+    "who-has-the-upper-hand": "topic-piper",
+    "my-pit-girlfriend": "topic-piper",
+    "sitting-on-a-bench-together": "topic-piper",
+    "long-hair-windy-day": "topic-piper",
+    "they-are-related-to-gail": "topic-piper",
+    # Bay Area everyday life
+    "and-more": "topic-bayarea",
+    "good-view": "topic-bayarea",
+    "sunday-afternoon": "topic-bayarea",
+    "waiting-for-pho": "topic-bayarea",
+    "bridge-demolition": "topic-bayarea",
+    "back-to-the-fog": "topic-bayarea",
+    "hello-world-2": "topic-bayarea",
+    "when-you-think-youve-seen-it-all": "topic-bayarea",
+    "construction-has-started": "topic-bayarea",
+    "construction-monster": "topic-bayarea",
+    "a-different-perspective": "topic-bayarea",
+    "ice-cream-in-the-mail": "topic-bayarea",
+    "colors-of-the-groth-household": "topic-bayarea",
+    "improved-walk-sign": "topic-bayarea",
+    # Netherlands everyday life
+    "great-beach-day": "topic-lowlands",
+    "beach-day": "topic-lowlands",
+    "zoom-in-to-see-these-donuts-gone-wrong-or-good": "topic-lowlands",
+    "where-am-i-now": "topic-lowlands",
+    "saturday-in-the-park-3": "topic-lowlands",
+    "ice-breaking-tour-boat": "topic-lowlands",
+    # Getting around
+    "part-of-the-morning-commute": "topic-transport",
+    "rental-for-a-day": "topic-transport",
+    # Gatherings, family, and things tasted
+    "bartending-class": "topic-celebrations",
+    "mixology-class": "topic-celebrations",
+    "douglas-fir-makes-for-awful-brandy": "topic-celebrations",
+    "tool-bag-thanks-mom": "topic-celebrations",
+    "june-1972": "topic-celebrations",
+    "human-the-movie": "topic-celebrations",
+    # Elsewhere in the States
+    "slc": "topic-america",
+    "camp-site": "topic-america",
+    "quick-la-visit": "topic-america",
+    # Gadget teardown
+    "guts-of-an-amazon-kindle-fire": "topic-art",
 }
 
 # Ordered rules: earlier rules win ties. Keywords match whole words,
 # case-insensitively, in the title (3 points) and body text (1 point).
+#
+# Order matters. Distinctive destinations come first; the recurring art
+# projects come before place rules so "30 Days of Outdoor Art: Day 5 …next
+# to AT&T Park" files under Art rather than the Bay Area; and the two
+# "home" chapters (Bay Area, Lowlands) sit last as catch-alls for the
+# everyday posts of each era.
 AUTO_RULES = [
     ("topic-japan", [
-        "tokyo", "kyoto", "osaka", "nara", "japan", "shinkansen", "yokohama",
-        "fuji", "asakusa",
+        "tokyo", "kyoto", "osaka", "nara", "japan", "japanese", "shinkansen",
+        "yokohama", "fuji", "asakusa", "sake", "shibuya", "ginza",
     ]),
     ("topic-downunder", [
         "sydney", "auckland", "cairns", "singapore", "zealand", "australia",
         "rotorua", "changi", "dubai", "tel aviv", "jerusalem", "israel",
         "jaffa", "burj", "persian gulf", "ramadan", "koala", "wombat",
-    ]),
-    ("topic-america", [
-        "nyc", "new york", "brooklyn", "manhattan", "vegas", "san francisco",
-        "seattle", "berkeley", "california", "utah", "alta", "snowbird",
-        "niagara", "toronto", "los angeles", "beverly hills", "49ers",
-        "levi stadium", "dreamforce", "jfk", "twa", "helens", "oregon",
-        "space shuttle", "museum of flight", "pickerel",
+        "morocco", "marrakesh", "marrakech", "sahara", "saharan", "atlas mountains",
+        "camel", "camels", "dromedary", "kasba", "casbah", "merzouga", "emirates",
     ]),
     ("topic-sunshine", [
         "jersey", "tenerife", "malta", "canary", "cappadocia", "turkey",
-        "valletta", "sliema",
+        "valletta", "sliema", "mallorca", "ibiza",
+    ]),
+    ("topic-art", [
+        "art", "artwork", "mural", "murals", "sculpture", "sculptures",
+        "statue", "statues", "graffiti", "gable stone", "gable stones",
+        "gevelsteen", "street art", "painting", "paintings", "painted",
+        "museum", "museums", "gallery", "exhibit", "exhibition", "mosaic",
+        "satellite", "satellites", "planet labs", "rocket", "spaceship",
+        "planetarium", "lego", "virtual reality",
+    ]),
+    ("topic-america", [
+        "nyc", "new york", "brooklyn", "manhattan", "vegas", "chicago",
+        "seattle", "utah", "alta", "snowbird", "loveland", "niagara",
+        "toronto", "minnesota", "pickerel", "pickeral", "dreamforce", "jfk",
+        "twa", "helens", "oregon", "portland", "boston", "texas", "florida",
+        "denver", "colorado", "49ers", "levi stadium", "sharks hockey",
+        "warren miller", "gi joe", "los angeles", "beverly hills", "tar pits",
+        "jones island", "san juan islands",
     ]),
     ("topic-europe", [
         "london", "paris", "dublin", "madrid", "budapest", "lille", "lisbon",
         "porto", "portugal", "heidelberg", "stuttgart", "frankfurt",
         "cologne", "copenhagen", "stockholm", "zurich", "prague", "barcelona",
         "dusseldorf", "düsseldorf", "malaga", "málaga", "ireland", "france",
-        "germany", "german", "spain", "champagne", "alsace", "strasbourg", "brighton",
-        "cascais", "sintra", "czech", "vienna", "berlin", "munich", "italy",
-        "rome", "edinburgh", "scotland",
+        "germany", "german", "spain", "champagne", "alsace", "strasbourg",
+        "brighton", "cascais", "sintra", "czech", "vienna", "berlin",
+        "munich", "italy", "italian", "rome", "edinburgh", "scotland",
+        "venice", "verona", "florence", "cinque terre", "riomaggiore",
+        "vernazza", "monterosso", "borough market", "england", "wales",
     ]),
     ("topic-transport", [
-        "bike", "bikes", "bicycle", "bicycles", "tram", "trams", "train",
-        "trains", "klm", "boeing", "airport", "schiphol", "eurostar",
-        "e-golf", "electric car", "electric cars", "charging", "cargo",
-        "scooter", "karts", "metro", "cockpit", "vehicle", "vehicles",
-        "wheeler", "spare tire",
+        "bike", "bikes", "bicycle", "bicycles", "biking", "tram", "trams",
+        "train", "trains", "klm", "boeing", "airbus", "airport", "schiphol",
+        "eurostar", "e-golf", "electric car", "electric cars", "charging",
+        "cargo", "scooter", "karts", "metro", "cockpit", "vehicle",
+        "vehicles", "wheeler", "spare tire", "ferry", "kayak", "kayaking",
+        "sailing", "catamaran", "drawbridge", "draw bridge",
     ]),
     ("topic-piper", [
         "piper", "busby", "poodle", "poodles", "dog", "dogs", "puppy",
-        "cow", "cows", "horse", "horses", "deer", "swan", "swans", "bison",
-        "buffalo", "wildlife", "parrot", "parrots", "fox", "clydesdale",
-        "clydesdales",
+        "puppies", "pup", "pups", "cow", "cows", "horse", "horses", "deer",
+        "swan", "swans", "bison", "buffalo", "wildlife", "parrot", "parrots",
+        "fox", "clydesdale", "clydesdales", "squirrel", "groomed", "grooming",
+        "haircut", "haircuts", "tug-of-war", "sibling", "leash", "kennel",
+        "pigeons", "seagull", "sea lions", "worm", "worms",
     ]),
     ("topic-celebrations", [
         "christmas", "sinterklaas", "king's day", "kings day", "pride",
-        "new year", "thanksgiving", "birthday", "anniversary", "mother's day",
-        "father's day", "easter", "halloween", "holiday", "holidays", "xmas",
-        "fireworks", "wedding", "light festival",
+        "new year", "thanksgiving", "birthday", "birthdays", "anniversary",
+        "mother's day", "father's day", "easter", "halloween", "holiday",
+        "holidays", "xmas", "fireworks", "wedding", "light festival",
+        "graduation", "valentine", "4th of july", "parade",
     ]),
     ("topic-seasons", [
         "spring", "springtime", "tulip", "tulips", "autumn", "fall colors",
         "snow", "snowy", "winter", "summer", "flower", "flowers", "daffodil",
         "blossom", "frozen", "freeze", "freezing", "seasons", "leaves",
+        "rose", "roses",
+    ]),
+    ("topic-bayarea", [
+        "san francisco", "bay bridge", "castro", "san jose", "at&t park",
+        "giants", "warriors", "oakland", "berkeley", "monterey", "sonoma",
+        "presidio", "ucsf", "silicon valley", "palo alto", "muni",
+        "caltrain", "bart", "marin", "napa", "tahoe", "yosemite",
+        "california", "santa barbara", "palm springs", "hollywood",
+        "hearst", "candlestick", "delores park", "dolores park", "adobe",
+        "xactly", "mission bay", "guadalupe", "vta", "the bay",
     ]),
     ("topic-lowlands", [
         "amsterdam", "amsterdamse", "netherlands", "dutch", "holland",
         "zandvoort", "haarlem", "utrecht", "dunes", "amstel", "canal",
-        "canals", "rijks", "van gogh", "vondelpark", "noordwijk", "gable",
+        "canals", "rijks", "van gogh", "vondelpark", "noordwijk",
         "albert cuyp", "de pijp", "amstelpark", "north sea", "rotterdam",
         "delft", "leiden", "foodhallen", "a'dam", "elswout", "scheepvaart",
-        "garden", "basketball", "car wash",
+        "garden", "basketball", "car wash", "stroopwafel", "sprinkles",
+        "cheese", "windmill", "windmills", "houseboat", "neighbourhood",
     ]),
 ]
 

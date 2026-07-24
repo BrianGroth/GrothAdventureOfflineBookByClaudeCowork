@@ -14,18 +14,21 @@ from core.db.models import Entry, EntryMedia, Media, EntryTag, Tag
 
 router = APIRouter(prefix="/book", tags=["book"])
 
-# slug -> (emoji, tagline, order); labels/colors come from the tag table
+# slug -> (emoji, tagline, order); labels/colors come from the tag table.
+# Keep in step with TOPICS in scripts/assign_topics.py.
 TOPIC_META = {
-    "topic-lowlands": ("🌷", "Daily life, Dutch quirks, and discoveries around Amsterdam & Haarlem", 1),
-    "topic-seasons": ("🍂", "Tulips, fall colors, and first frosts — the turning year in the Netherlands", 2),
-    "topic-piper": ("🐾", "Poodles, highland cows, wild horses, and the neighborhood deer", 3),
-    "topic-transport": ("🚲", "The curious ways the world gets around", 4),
-    "topic-europe": ("🏰", "City breaks and road trips across the continent", 5),
-    "topic-japan": ("🗾", "Two trips east: Tokyo, Kyoto, Osaka, Nara & Mt. Fuji", 6),
-    "topic-downunder": ("🦘", "Farther afield: Australia, New Zealand, Singapore, Dubai & the Middle East", 7),
-    "topic-america": ("🗽", "North American visits: New York, Vegas, California & the Northwest", 8),
-    "topic-sunshine": ("🏝️", "Jersey, Tenerife, Malta & Turkey — warm light and open water", 9),
-    "topic-celebrations": ("🎉", "Anniversaries, holidays, and moments worth marking", 10),
+    "topic-bayarea": ("🌉", "Home in San Francisco and San Jose — city life, ballparks, and California road trips", 1),
+    "topic-lowlands": ("🌷", "Daily life, Dutch quirks, and discoveries around Amsterdam & Haarlem", 2),
+    "topic-seasons": ("🍂", "Tulips, fall colors, and first frosts — the turning year", 3),
+    "topic-piper": ("🐾", "Poodles, highland cows, wild horses, and the neighborhood deer", 4),
+    "topic-art": ("🎨", "Murals, sculptures, gable stones, museums, satellites, and things worth a second look", 5),
+    "topic-transport": ("🚲", "The curious ways the world gets around", 6),
+    "topic-europe": ("🏰", "City breaks and road trips across the continent", 7),
+    "topic-japan": ("🗾", "Two trips east: Tokyo, Kyoto, Osaka, Nara & Mt. Fuji", 8),
+    "topic-downunder": ("🦘", "Australia, New Zealand, Singapore, Dubai, Israel & the Moroccan Sahara", 9),
+    "topic-america": ("🗽", "Across the States: New York, Chicago, Vegas, Minnesota lakes & mountain snow", 10),
+    "topic-sunshine": ("🏝️", "Jersey, Tenerife, Malta & Turkey — warm light and open water", 11),
+    "topic-celebrations": ("🎉", "Anniversaries, holidays, and moments worth marking", 12),
 }
 
 # Entries synced after the last curation run land here so the book never breaks.
@@ -128,6 +131,11 @@ def build_toc(db: Session) -> dict:
 
     if needs_fallback:
         topics.append(dict(FALLBACK_TOPIC))
+
+    # Drop chapters that ended up with no pages (e.g. the fallback chapter
+    # once every entry has been filed) so the contents never shows an empty one.
+    used = {i["topic"] for i in items}
+    topics = [t for t in topics if t["slug"] in used]
 
     return {"topics": topics, "entries": items}
 
