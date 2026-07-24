@@ -46,68 +46,78 @@ def _resolve_db() -> Path:
 DB_PATH = _resolve_db()
 
 # slug -> (label, emoji, tagline, color, order)
-# Chapter order roughly follows the life the archive tells: the Bay Area
-# years first, then the move to the Netherlands, then the wider world.
+# Chapter order follows the life the archive tells: the four home eras in
+# the order they were lived, then the recurring themes, then the journeys.
 TOPICS = {
+    "topic-seattle": (
+        "The Seattle Years", "🚤",
+        "Home on a Lake Union houseboat — Kirkland, Puget Sound, and Pacific Northwest snow",
+        "#2f7d95", 1,
+    ),
+    "topic-london": (
+        "The London Years", "🎡",
+        "Expat life in Fulham — the Thames, the tube, and weekends across the Channel",
+        "#9b3d5c", 2,
+    ),
     "topic-bayarea": (
         "The Bay Area Years", "🌉",
         "Home in San Francisco and San Jose — city life, ballparks, and California road trips",
-        "#d97706", 1,
+        "#d97706", 3,
     ),
     "topic-lowlands": (
         "Life in the Lowlands", "🌷",
         "Daily life, Dutch quirks, and discoveries around Amsterdam & Haarlem",
-        "#c96f2f", 2,
+        "#c96f2f", 4,
     ),
     "topic-seasons": (
         "Through the Seasons", "🍂",
         "Tulips, fall colors, and first frosts — the turning year",
-        "#b58900", 3,
+        "#b58900", 5,
     ),
     "topic-piper": (
-        "Piper & Friends", "🐾",
-        "Poodles, highland cows, wild horses, and the neighborhood deer",
-        "#6b8c6b", 4,
+        "Dogs of the House", "🐾",
+        "Sam, Ripley, Milo, Busby and Piper — plus highland cows, wild horses and neighbourhood deer",
+        "#6b8c6b", 6,
     ),
     "topic-art": (
         "Art & Curiosities", "🎨",
         "Murals, sculptures, gable stones, museums, satellites, and things worth a second look",
-        "#7c3aed", 5,
+        "#7c3aed", 7,
     ),
     "topic-transport": (
         "Planes, Trains & Bicycles", "🚲",
         "The curious ways the world gets around",
-        "#3d7ea6", 6,
+        "#3d7ea6", 8,
     ),
     "topic-europe": (
         "European Escapes", "🏰",
         "City breaks and road trips across the continent",
-        "#8e5ba6", 7,
+        "#8e5ba6", 9,
     ),
     "topic-japan": (
         "Adventures in Japan", "🗾",
         "Two trips east: Tokyo, Kyoto, Osaka, Nara & Mt. Fuji",
-        "#c0392b", 8,
+        "#c0392b", 10,
     ),
     "topic-downunder": (
         "Farther Afield", "🦘",
         "Australia, New Zealand, Singapore, Dubai, Israel & the Moroccan Sahara",
-        "#a8622d", 9,
+        "#a8622d", 11,
     ),
     "topic-america": (
         "American Adventures", "🗽",
         "Across the States: New York, Chicago, Vegas, Minnesota lakes & mountain snow",
-        "#34698a", 10,
+        "#34698a", 12,
     ),
     "topic-sunshine": (
         "Sunshine Getaways", "🏝️",
         "Jersey, Tenerife, Malta & Turkey — warm light and open water",
-        "#16a085", 11,
+        "#16a085", 13,
     ),
     "topic-celebrations": (
         "Celebrations & Milestones", "🎉",
         "Anniversaries, holidays, and moments worth marking",
-        "#b3436c", 12,
+        "#b3436c", 14,
     ),
 }
 
@@ -292,9 +302,19 @@ CURATED = {
 #
 # Order matters. Distinctive destinations come first; the recurring art
 # projects come before place rules so "30 Days of Outdoor Art: Day 5 …next
-# to AT&T Park" files under Art rather than the Bay Area; and the two
-# "home" chapters (Bay Area, Lowlands) sit last as catch-alls for the
-# everyday posts of each era.
+# to AT&T Park" files under Art rather than the Bay Area; and the four
+# "home" chapters (Seattle, London, Bay Area, Lowlands) sit last as
+# catch-alls for the everyday posts of each era.
+#
+# A rule may carry an era window `(from, to)` on event_date. This is what
+# separates living somewhere from visiting it: "London" in 2007 is home life,
+# "London" in 2024 is a European escape. Home-era rules are windowed; the
+# travel chapters are not.
+ERAS = {
+    "topic-london": ("2005-06-01", "2010-06-30"),   # expat years in Fulham
+    "topic-seattle": ("2004-01-01", "2013-08-31"),  # before the move to California
+}
+
 AUTO_RULES = [
     ("topic-japan", [
         "tokyo", "kyoto", "osaka", "nara", "japan", "japanese", "shinkansen",
@@ -318,6 +338,21 @@ AUTO_RULES = [
         "museum", "museums", "gallery", "exhibit", "exhibition", "mosaic",
         "satellite", "satellites", "planet labs", "rocket", "spaceship",
         "planetarium", "lego", "virtual reality",
+    ]),
+    # ── Home eras, windowed by ERAS above. These sit ahead of the America
+    # and Europe rules so that living in a city beats visiting it: "London"
+    # in 2007 is home, "London" in 2024 is a European escape. ──
+    ("topic-london", [
+        "london", "fulham", "thames", "putney", "chelsea", "kensington",
+        "westminster", "soho", "camden", "greenwich", "hyde park", "tube",
+        "piccadilly", "paddington", "heathrow", "gatwick", "england",
+        "english", "britain", "british", "pub", "pubs",
+    ]),
+    ("topic-seattle", [
+        "seattle", "kirkland", "houseboat", "lake union", "puget", "bellevue",
+        "redmond", "tacoma", "olympia", "rainier", "cascades", "ballard",
+        "fremont", "queen anne", "capitol hill", "pike place", "space needle",
+        "washington state", "northwest", "orca", "salmon",
     ]),
     ("topic-america", [
         "nyc", "new york", "brooklyn", "manhattan", "vegas", "chicago",
@@ -348,7 +383,8 @@ AUTO_RULES = [
         "sailing", "catamaran", "drawbridge", "draw bridge",
     ]),
     ("topic-piper", [
-        "piper", "busby", "poodle", "poodles", "dog", "dogs", "puppy",
+        "piper", "busby", "milo", "ripley", "sam", "poodle", "poodles",
+        "dog", "dogs", "puppy",
         "puppies", "pup", "pups", "cow", "cows", "horse", "horses", "deer",
         "swan", "swans", "bison", "buffalo", "wildlife", "parrot", "parrots",
         "fox", "clydesdale", "clydesdales", "squirrel", "groomed", "grooming",
@@ -404,12 +440,25 @@ def _normalize(s: str) -> str:
     return s.lower().replace("’", "'").replace("‘", "'")
 
 
-def auto_topic(title: str, text: str) -> str | None:
+def _in_era(topic: str, event_date: str | None) -> bool:
+    """True if this rule applies to a post with this date (see ERAS)."""
+    window = ERAS.get(topic)
+    if window is None:
+        return True
+    if not event_date:
+        return False
+    start, end = window
+    return start <= event_date <= end
+
+
+def auto_topic(title: str, text: str, event_date: str | None = None) -> str | None:
     """Best-scoring chapter for an uncurated entry, or None if no signal."""
     title_l = _normalize(title or "")
     text_l = _normalize((text or "")[:2000])
     best_topic, best_score = None, 0
     for topic, _ in AUTO_RULES:
+        if not _in_era(topic, event_date):
+            continue
         score = 0
         for rx in _word_res[topic]:
             if rx.search(title_l):
@@ -453,27 +502,27 @@ def main() -> int:
     )
 
     entries = cur.execute(
-        "SELECT id, permalink, title, substr(text_content, 1, 2000) FROM entry"
+        "SELECT id, permalink, title, substr(text_content, 1, 2000), event_date FROM entry"
     ).fetchall()
 
     counts: dict[str, int] = {}
     fallback_entries = []
     curated_used = set()
-    for entry_id, permalink, title, text in entries:
+    for entry_id, permalink, title, text, event_date in entries:
         s = slug_of(permalink)
         topic = CURATED.get(s)
         manual = topic is not None
         if manual:
             curated_used.add(s)
         else:
-            topic = auto_topic(title, text) or FALLBACK
+            topic = auto_topic(title, text, event_date) or FALLBACK
         cur.execute(
             "INSERT OR IGNORE INTO entry_tag (entry_id, tag_id, auto) VALUES (?, ?, ?)",
             (entry_id, tag_ids[topic], 0 if manual else 1),
         )
         counts[topic] = counts.get(topic, 0) + 1
         if topic == FALLBACK:
-            fallback_entries.append((entry_id, s, title))
+            fallback_entries.append((entry_id, s, title, event_date))
 
     con.commit()
 
@@ -490,8 +539,8 @@ def main() -> int:
     if fallback_entries:
         print(f"\n{len(fallback_entries)} entries had no keyword signal (in 'New Adventures').")
         print("Give them a home by adding their slug to CURATED in this script:")
-        for eid, s, title in fallback_entries:
-            print(f'    "{s}": "topic-…",  # {title}')
+        for eid, s, title, date in fallback_entries:
+            print(f'    "{s}": "topic-…",  # {date} {title}')
 
     return 0
 

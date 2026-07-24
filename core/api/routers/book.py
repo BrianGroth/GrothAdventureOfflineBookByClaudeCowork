@@ -17,18 +17,20 @@ router = APIRouter(prefix="/book", tags=["book"])
 # slug -> (emoji, tagline, order); labels/colors come from the tag table.
 # Keep in step with TOPICS in scripts/assign_topics.py.
 TOPIC_META = {
-    "topic-bayarea": ("🌉", "Home in San Francisco and San Jose — city life, ballparks, and California road trips", 1),
-    "topic-lowlands": ("🌷", "Daily life, Dutch quirks, and discoveries around Amsterdam & Haarlem", 2),
-    "topic-seasons": ("🍂", "Tulips, fall colors, and first frosts — the turning year", 3),
-    "topic-piper": ("🐾", "Poodles, highland cows, wild horses, and the neighborhood deer", 4),
-    "topic-art": ("🎨", "Murals, sculptures, gable stones, museums, satellites, and things worth a second look", 5),
-    "topic-transport": ("🚲", "The curious ways the world gets around", 6),
-    "topic-europe": ("🏰", "City breaks and road trips across the continent", 7),
-    "topic-japan": ("🗾", "Two trips east: Tokyo, Kyoto, Osaka, Nara & Mt. Fuji", 8),
-    "topic-downunder": ("🦘", "Australia, New Zealand, Singapore, Dubai, Israel & the Moroccan Sahara", 9),
-    "topic-america": ("🗽", "Across the States: New York, Chicago, Vegas, Minnesota lakes & mountain snow", 10),
-    "topic-sunshine": ("🏝️", "Jersey, Tenerife, Malta & Turkey — warm light and open water", 11),
-    "topic-celebrations": ("🎉", "Anniversaries, holidays, and moments worth marking", 12),
+    "topic-seattle": ("🚤", "Home on a Lake Union houseboat — Kirkland, Puget Sound, and Pacific Northwest snow", 1),
+    "topic-london": ("🎡", "Expat life in Fulham — the Thames, the tube, and weekends across the Channel", 2),
+    "topic-bayarea": ("🌉", "Home in San Francisco and San Jose — city life, ballparks, and California road trips", 3),
+    "topic-lowlands": ("🌷", "Daily life, Dutch quirks, and discoveries around Amsterdam & Haarlem", 4),
+    "topic-seasons": ("🍂", "Tulips, fall colors, and first frosts — the turning year", 5),
+    "topic-piper": ("🐾", "Sam, Ripley, Milo, Busby and Piper — plus highland cows, wild horses and neighbourhood deer", 6),
+    "topic-art": ("🎨", "Murals, sculptures, gable stones, museums, satellites, and things worth a second look", 7),
+    "topic-transport": ("🚲", "The curious ways the world gets around", 8),
+    "topic-europe": ("🏰", "City breaks and road trips across the continent", 9),
+    "topic-japan": ("🗾", "Two trips east: Tokyo, Kyoto, Osaka, Nara & Mt. Fuji", 10),
+    "topic-downunder": ("🦘", "Australia, New Zealand, Singapore, Dubai, Israel & the Moroccan Sahara", 11),
+    "topic-america": ("🗽", "Across the States: New York, Chicago, Vegas, Minnesota lakes & mountain snow", 12),
+    "topic-sunshine": ("🏝️", "Jersey, Tenerife, Malta & Turkey — warm light and open water", 13),
+    "topic-celebrations": ("🎉", "Anniversaries, holidays, and moments worth marking", 14),
 }
 
 # Entries synced after the last curation run land here so the book never breaks.
